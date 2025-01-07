@@ -9,7 +9,7 @@ type RequestResult = {
 async function handleRequest(
   url: string,
   method: string,
-  body?: { username: string; password: string; }
+  body?: { username?: string; password?: string; avatarUrl?: string; status?: string; customStatus?: string }
 ): Promise<RequestResult> {
   try {
     const response = await fetch(url, {
@@ -88,6 +88,22 @@ export function useUser() {
     },
   });
 
+  const updateAvatarMutation = useMutation({
+    mutationFn: (avatarUrl: string) => 
+      handleRequest('/api/user/avatar', 'PUT', { avatarUrl }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+    },
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: (status: string) => 
+      handleRequest('/api/user/status', 'PUT', { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+    },
+  });
+
   return {
     user,
     isLoading,
@@ -96,5 +112,7 @@ export function useUser() {
     logout: logoutMutation.mutateAsync,
     register: registerMutation.mutateAsync,
     loginAsGuest: guestLoginMutation.mutateAsync,
+    updateAvatar: updateAvatarMutation.mutateAsync,
+    updateStatus: updateStatusMutation.mutateAsync,
   };
 }

@@ -9,6 +9,53 @@ import { eq, and, desc, isNull } from "drizzle-orm";
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
+  // Update user avatar
+  app.put("/api/user/avatar", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const [updatedUser] = await db
+        .update(users)
+        .set({ 
+          avatarUrl: req.body.avatarUrl,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      res.json({ message: "Avatar updated", user: updatedUser });
+    } catch (error) {
+      console.error("Error updating avatar:", error);
+      res.status(500).send("Error updating avatar");
+    }
+  });
+
+  // Update user status
+  app.put("/api/user/status", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const [updatedUser] = await db
+        .update(users)
+        .set({ 
+          status: req.body.status,
+          lastSeen: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      res.json({ message: "Status updated", user: updatedUser });
+    } catch (error) {
+      console.error("Error updating status:", error);
+      res.status(500).send("Error updating status");
+    }
+  });
+
   // Get all users
   app.get("/api/users", async (req, res) => {
     if (!req.isAuthenticated()) {
