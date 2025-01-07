@@ -30,7 +30,7 @@ interface SidebarProps {
   onSelectUser: (userId: number) => void;
 }
 
-export default function Sidebar({
+export function Sidebar({
   channels,
   selectedChannel,
   onSelectChannel,
@@ -50,7 +50,7 @@ export default function Sidebar({
 
   return (
     <SidebarProvider defaultOpen>
-      <SidebarComponent className="border-r">
+      <SidebarComponent variant="sidebar" className="border-r">
         <SidebarHeader>
           <h1 className="text-xl font-bold px-4 py-3">ChatGenius</h1>
         </SidebarHeader>
@@ -109,3 +109,5 @@ export default function Sidebar({
     </SidebarProvider>
   );
 }
+
+export default Sidebar;

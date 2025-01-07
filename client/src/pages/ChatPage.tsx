@@ -1,5 +1,6 @@
 import { useState } from "react";
-import Sidebar from "../components/layout/Sidebar";
+import { useUser } from "@/hooks/use-user";
+import { Sidebar } from "../components/layout/Sidebar";
 import MessageList from "../components/chat/MessageList";
 import MessageInput from "../components/chat/MessageInput";
 import ThreadView from "../components/chat/ThreadView";
@@ -29,15 +30,13 @@ export default function ChatPage() {
 
   return (
     <ResizablePanelGroup direction="horizontal" className="min-h-screen">
-      <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
-        <Sidebar
-          channels={channels || []}
-          selectedChannel={selectedChannel}
-          onSelectChannel={handleChannelSelect}
-          selectedUserId={selectedUserId}
-          onSelectUser={handleUserSelect}
-        />
-      </ResizablePanel>
+      <Sidebar
+        channels={channels || []}
+        selectedChannel={selectedChannel}
+        onSelectChannel={handleChannelSelect}
+        selectedUserId={selectedUserId}
+        onSelectUser={handleUserSelect}
+      />
 
       <ResizableHandle />
 
