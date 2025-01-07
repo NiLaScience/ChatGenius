@@ -72,6 +72,43 @@ export function useMessages(channelId: number, threadId?: number) {
     },
   });
 
+  const addReaction = useMutation({
+    mutationFn: async (messageId: number, emoji: string) => {
+      if (!socket || !user) {
+        throw new Error("Socket not connected or user not logged in");
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        socket.emit("reaction", {
+          messageId,
+          userId: user.id,
+          emoji,
+        });
+
+        // Wait for error or success
+        const errorHandler = (error: any) => {
+          socket.off("reaction_error", errorHandler);
+          reject(error);
+        };
+
+        socket.once("reaction_error", errorHandler);
+
+        // Resolve after a short delay if no error received
+        setTimeout(() => {
+          socket.off("reaction_error", errorHandler);
+          resolve();
+        }, 1000);
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error adding reaction",
+        description: error.message || "Please try again",
+      });
+    },
+  });
+
   useEffect(() => {
     if (!socket) return;
 
@@ -103,8 +140,25 @@ export function useMessages(channelId: number, threadId?: number) {
       }
     };
 
+    // Handle reactions
+    const reactionHandler = (data: { messageId: number, reaction: any }) => {
+      console.log("Received reaction:", data);
+      queryClient.setQueryData<Message[]>(queryKey, (oldMessages = []) => {
+        return oldMessages.map(msg => {
+          if (msg.id === data.messageId) {
+            return {
+              ...msg,
+              reactions: [...(msg.reactions || []), data.reaction],
+            };
+          }
+          return msg;
+        });
+      });
+    };
+
     socket.on("message", messageHandler);
     socket.on("thread_message", threadMessageHandler);
+    socket.on("reaction", reactionHandler);
     socket.on("connect_error", (error) => {
       console.error("Socket connection error:", error);
       toast({
@@ -125,13 +179,15 @@ export function useMessages(channelId: number, threadId?: number) {
       }
       socket.off("message", messageHandler);
       socket.off("thread_message", threadMessageHandler);
+      socket.off("reaction", reactionHandler);
       socket.off("connect_error");
     };
-  }, [channelId, threadId, socket, updateMessages, toast]);
+  }, [channelId, threadId, socket, updateMessages, toast, queryKey]);
 
   return {
     messages: messages || [],
     isLoading,
     sendMessage: sendMessage.mutateAsync,
+    addReaction: addReaction.mutateAsync,
   };
 }

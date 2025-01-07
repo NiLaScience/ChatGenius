@@ -1,7 +1,7 @@
 import { Server } from "http";
 import { Server as SocketServer } from "socket.io";
 import { db } from "@db";
-import { messages, users } from "@db/schema";
+import { messages, users, reactions } from "@db/schema";
 import { eq, and } from "drizzle-orm";
 
 export function setupWebSocket(server: Server) {
@@ -80,10 +80,20 @@ export function setupWebSocket(server: Server) {
               username: users.username,
               avatarUrl: users.avatarUrl,
             },
+            reactions: {
+              id: reactions.id,
+              emoji: reactions.emoji,
+              userId: reactions.userId,
+              user: {
+                id: users.id,
+                username: users.username,
+              },
+            },
           })
           .from(messages)
           .where(eq(messages.id, newMessage.id))
           .leftJoin(users, eq(messages.userId, users.id))
+          .leftJoin(reactions, eq(messages.id, reactions.messageId))
           .limit(1);
 
         if (!messageWithUser) {
@@ -102,6 +112,78 @@ export function setupWebSocket(server: Server) {
         console.error("Error saving/broadcasting message:", error);
         socket.emit("message_error", {
           error: "Failed to send message",
+          details: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    });
+
+    socket.on("reaction", async (data: {
+      messageId: number,
+      userId: number,
+      emoji: string
+    }) => {
+      try {
+        console.log("Received reaction:", data);
+
+        // Insert the reaction
+        const [newReaction] = await db
+          .insert(reactions)
+          .values(data)
+          .returning();
+
+        if (!newReaction) {
+          throw new Error("Failed to save reaction");
+        }
+
+        // Fetch the complete reaction with user data
+        const [reactionWithUser] = await db
+          .select({
+            id: reactions.id,
+            emoji: reactions.emoji,
+            messageId: reactions.messageId,
+            userId: reactions.userId,
+            user: {
+              id: users.id,
+              username: users.username,
+            },
+          })
+          .from(reactions)
+          .where(eq(reactions.id, newReaction.id))
+          .leftJoin(users, eq(reactions.userId, users.id))
+          .limit(1);
+
+        if (!reactionWithUser) {
+          throw new Error("Failed to fetch reaction with user data");
+        }
+
+        // Find the channel ID for the message to broadcast to the correct room
+        const [message] = await db
+          .select()
+          .from(messages)
+          .where(eq(messages.id, data.messageId))
+          .limit(1);
+
+        if (!message) {
+          throw new Error("Message not found");
+        }
+
+        console.log("Broadcasting reaction:", data);
+        io.to(`channel:${message.channelId}`).emit("reaction", {
+          messageId: data.messageId,
+          reaction: reactionWithUser,
+        });
+
+        // Also broadcast to thread if the message is a reply
+        if (message.parentId) {
+          io.to(`thread:${message.parentId}`).emit("reaction", {
+            messageId: data.messageId,
+            reaction: reactionWithUser,
+          });
+        }
+      } catch (error) {
+        console.error("Error saving/broadcasting reaction:", error);
+        socket.emit("reaction_error", {
+          error: "Failed to add reaction",
           details: error instanceof Error ? error.message : "Unknown error"
         });
       }

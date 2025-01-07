@@ -10,6 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useQuery } from "@tanstack/react-query";
 import type { Message } from "@db/schema";
 
 interface MessageListProps {
@@ -17,8 +18,14 @@ interface MessageListProps {
   onThreadSelect: (messageId: number) => void;
 }
 
+interface ReactionCount {
+  emoji: string;
+  count: number;
+  users: { id: number; username: string }[];
+}
+
 export default function MessageList({ channelId, onThreadSelect }: MessageListProps) {
-  const { messages, isLoading } = useMessages(channelId);
+  const { messages, isLoading, addReaction } = useMessages(channelId);
   const { user } = useUser();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -54,6 +61,64 @@ export default function MessageList({ channelId, onThreadSelect }: MessageListPr
     groups[date].push(message);
     return groups;
   }, {}) || {};
+
+  // Function to get thread preview for a message
+  const ThreadPreview = ({ messageId }: { messageId: number }) => {
+    const { data: replies } = useQuery<Message[]>({
+      queryKey: [`/api/messages/${messageId}/replies`],
+      enabled: !!messageId,
+    });
+
+    if (!replies?.length) return null;
+
+    const replyCount = replies.length;
+    const latestReply = replies[replies.length - 1];
+
+    return (
+      <div 
+        className="mt-2 pl-4 border-l-2 border-muted cursor-pointer hover:bg-accent/50 rounded p-2"
+        onClick={(e) => {
+          e.stopPropagation();
+          onThreadSelect(messageId);
+        }}
+      >
+        <div className="text-sm text-muted-foreground">
+          {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+        </div>
+        {latestReply && (
+          <div className="flex items-center gap-2 mt-1">
+            <Avatar className="h-6 w-6">
+              <AvatarImage src={latestReply.user?.avatarUrl} />
+              <AvatarFallback>
+                {latestReply.user?.username?.[0]?.toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="text-sm truncate">{latestReply.content}</div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Function to aggregate reactions
+  const aggregateReactions = (reactions: any[]): ReactionCount[] => {
+    const counts = reactions.reduce((acc: Record<string, ReactionCount>, reaction) => {
+      if (!acc[reaction.emoji]) {
+        acc[reaction.emoji] = {
+          emoji: reaction.emoji,
+          count: 0,
+          users: [],
+        };
+      }
+      acc[reaction.emoji].count++;
+      acc[reaction.emoji].users.push({
+        id: reaction.userId,
+        username: reaction.user.username,
+      });
+      return acc;
+    }, {});
+    return Object.values(counts);
+  };
 
   return (
     <ScrollArea
@@ -105,6 +170,23 @@ export default function MessageList({ channelId, onThreadSelect }: MessageListPr
                   <p className="text-sm">{message.content}</p>
                 </div>
 
+                {/* Reactions */}
+                {message.reactions?.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {aggregateReactions(message.reactions).map((reaction) => (
+                      <button
+                        key={reaction.emoji}
+                        onClick={() => addReaction(message.id, reaction.emoji)}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent hover:bg-accent/80"
+                        title={reaction.users.map(u => u.username).join(', ')}
+                      >
+                        <span>{reaction.emoji}</span>
+                        <span className="text-xs">{reaction.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button
                     variant="ghost"
@@ -131,9 +213,7 @@ export default function MessageList({ channelId, onThreadSelect }: MessageListPr
                             <button
                               key={emoji}
                               className="text-2xl hover:bg-accent p-1 rounded"
-                              onClick={() => {
-                                // TODO: Implement emoji reactions
-                              }}
+                              onClick={() => addReaction(message.id, emoji)}
                             >
                               {emoji}
                             </button>
@@ -143,6 +223,9 @@ export default function MessageList({ channelId, onThreadSelect }: MessageListPr
                     </PopoverContent>
                   </Popover>
                 </div>
+
+                {/* Thread Preview */}
+                <ThreadPreview messageId={message.id} />
               </div>
             </div>
           ))}
