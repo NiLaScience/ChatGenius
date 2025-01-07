@@ -1,5 +1,5 @@
 import { db } from "@db";
-import { users, channels, messages, channelMembers, directMessages, reactions } from "@db/schema";
+import { users, channels, messages, channelMembers } from "@db/schema";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
 
@@ -64,16 +64,16 @@ async function seed() {
       )
     );
 
-    // Add messages and threads
+    // Add messages
     for (const channel of createdChannels) {
-      const messages = [
+      const messagesList = [
         "Hey everyone! 👋",
         "How's it going?",
         "Anyone up for a chat?",
         "Check out this cool feature!",
       ];
 
-      for (const content of messages) {
+      for (const content of messagesList) {
         const [message] = await db
           .insert(messages)
           .values({
@@ -91,37 +91,6 @@ async function seed() {
             channelId: channel.id,
             userId: createdUsers[Math.floor(Math.random() * createdUsers.length)].id,
             parentId: message.id,
-          });
-        }
-
-        // Add some reactions
-        const emojis = ["👍", "❤️", "🎉", "🔥"];
-        for (const user of createdUsers) {
-          if (Math.random() > 0.5) {
-            await db.insert(reactions).values({
-              emoji: emojis[Math.floor(Math.random() * emojis.length)],
-              messageId: message.id,
-              userId: user.id,
-            });
-          }
-        }
-      }
-    }
-
-    // Add direct messages
-    const dmContents = [
-      "Hey, how are you?",
-      "Want to grab coffee?",
-      "Did you see the latest updates?",
-    ];
-
-    for (let i = 0; i < createdUsers.length; i++) {
-      for (let j = i + 1; j < createdUsers.length; j++) {
-        for (const content of dmContents) {
-          await db.insert(directMessages).values({
-            content,
-            senderId: createdUsers[i].id,
-            receiverId: createdUsers[j].id,
           });
         }
       }
