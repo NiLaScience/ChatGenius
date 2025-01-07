@@ -30,13 +30,15 @@ export default function ChatPage() {
 
   return (
     <ResizablePanelGroup direction="horizontal" className="min-h-screen">
-      <Sidebar
-        channels={channels || []}
-        selectedChannel={selectedChannel}
-        onSelectChannel={handleChannelSelect}
-        selectedUserId={selectedUserId}
-        onSelectUser={handleUserSelect}
-      />
+      <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
+        <Sidebar
+          channels={channels || []}
+          selectedChannel={selectedChannel}
+          onSelectChannel={handleChannelSelect}
+          selectedUserId={selectedUserId}
+          onSelectUser={handleUserSelect}
+        />
+      </ResizablePanel>
 
       <ResizableHandle />
 
