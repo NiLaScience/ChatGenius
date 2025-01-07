@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Settings, LogOut } from "lucide-react";
+import { cn } from "@/lib/utils";
 import ChannelList from "../chat/ChannelList";
 import UserList from "../chat/UserList";
 import CreateChannel from "../modals/CreateChannel";
@@ -70,12 +71,22 @@ export function Sidebar({
               variant="ghost"
               className="w-full justify-start gap-2 px-2"
             >
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={user?.avatarUrl} />
-                <AvatarFallback>
-                  {user?.username?.[0]?.toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="h-6 w-6">
+                  <AvatarImage src={user?.avatarUrl} />
+                  <AvatarFallback>
+                    {user?.username?.[0]?.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div
+                  className={cn(
+                    "absolute bottom-0 right-0 h-2 w-2 rounded-full border border-background",
+                    user?.status === "online"
+                      ? "bg-green-500"
+                      : "bg-zinc-500"
+                  )}
+                />
+              </div>
               <span className="text-sm font-medium">{user?.username}</span>
             </Button>
           </DropdownMenuTrigger>

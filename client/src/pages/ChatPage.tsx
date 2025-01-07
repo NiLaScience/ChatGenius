@@ -29,68 +29,68 @@ export default function ChatPage() {
   };
 
   return (
-    <ResizablePanelGroup direction="horizontal">
-      <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
-        <Sidebar
-          channels={channels || []}
-          selectedChannel={selectedChannel}
-          onSelectChannel={handleChannelSelect}
-          selectedUserId={selectedUserId}
-          onSelectUser={handleUserSelect}
-        />
-      </ResizablePanel>
+    <div className="h-screen overflow-hidden">
+      <ResizablePanelGroup direction="horizontal">
+        <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
+          <Sidebar
+            channels={channels || []}
+            selectedChannel={selectedChannel}
+            onSelectChannel={handleChannelSelect}
+            selectedUserId={selectedUserId}
+            onSelectUser={handleUserSelect}
+          />
+        </ResizablePanel>
 
-      <ResizableHandle />
+        <ResizableHandle />
 
-      <ResizablePanel defaultSize={selectedThread ? 50 : 80} minSize={45}>
-        <div className="flex flex-col h-screen">
-          {selectedUserId ? (
-            <DirectMessageView userId={selectedUserId} />
-          ) : (
-            <>
-              <div className="flex-none px-6 py-4 border-b bg-card">
-                <h2 className="text-xl font-semibold text-card-foreground">
-                  {selectedChannelData ? `#${selectedChannelData.name}` : "Select a channel"}
-                </h2>
-                {selectedChannelData?.description && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {selectedChannelData.description}
-                  </p>
-                )}
-              </div>
+        <ResizablePanel defaultSize={selectedThread ? 50 : 80} minSize={45}>
+          <div className="h-screen flex flex-col">
+            {selectedUserId ? (
+              <DirectMessageView userId={selectedUserId} />
+            ) : (
+              <>
+                <div className="flex-none px-6 py-4 border-b bg-card">
+                  <h2 className="text-xl font-semibold text-card-foreground">
+                    {selectedChannelData ? `#${selectedChannelData.name}` : "Select a channel"}
+                  </h2>
+                  {selectedChannelData?.description && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {selectedChannelData.description}
+                    </p>
+                  )}
+                </div>
 
-              <div className="flex-1 overflow-hidden relative">
-                {selectedChannel && (
-                  <div className="absolute inset-0">
+                <div className="flex-1 min-h-0">
+                  {selectedChannel && (
                     <MessageList
                       channelId={selectedChannel}
                       onThreadSelect={setSelectedThread}
                     />
+                  )}
+                </div>
+
+                {selectedChannel && !selectedThread && (
+                  <div className="flex-none px-6 py-4 border-t bg-background">
+                    <MessageInput channelId={selectedChannel} />
                   </div>
                 )}
-              </div>
+              </>
+            )}
+          </div>
+        </ResizablePanel>
 
-              {selectedChannel && !selectedThread && (
-                <div className="flex-none px-6 py-4 border-t bg-background">
-                  <MessageInput channelId={selectedChannel} />
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </ResizablePanel>
-
-      {selectedThread && (
-        <>
-          <ResizableHandle />
-          <ResizablePanel defaultSize={30} minSize={25} maxSize={40}>
-            <ThreadView
-              messageId={selectedThread}
-              onClose={() => setSelectedThread(null)}
-            />
-          </ResizablePanel>
-        </>
-      )}
-    </ResizablePanelGroup>
+        {selectedThread && (
+          <>
+            <ResizableHandle />
+            <ResizablePanel defaultSize={30} minSize={25} maxSize={40}>
+              <ThreadView
+                messageId={selectedThread}
+                onClose={() => setSelectedThread(null)}
+              />
+            </ResizablePanel>
+          </>
+        )}
+      </ResizablePanelGroup>
+    </div>
   );
 }
