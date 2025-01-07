@@ -8,6 +8,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -39,6 +44,25 @@ export function Sidebar({
       await logout();
     } catch (error) {
       console.error("Failed to logout:", error);
+    }
+  };
+
+  const updateStatus = async (status: string) => {
+    try {
+      const response = await fetch('/api/user/status', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+    } catch (error) {
+      console.error('Failed to update status:', error);
     }
   };
 
@@ -78,14 +102,37 @@ export function Sidebar({
                     {user?.username?.[0]?.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div
-                  className={cn(
-                    "absolute bottom-0 right-0 h-2 w-2 rounded-full border border-background",
-                    user?.status === "online"
-                      ? "bg-green-500"
-                      : "bg-zinc-500"
-                  )}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <div
+                      className={cn(
+                        "absolute bottom-0 right-0 h-2 w-2 rounded-full border border-background cursor-pointer",
+                        user?.status === "online"
+                          ? "bg-green-500"
+                          : "bg-zinc-500"
+                      )}
+                    />
+                  </PopoverTrigger>
+                  <PopoverContent side="right" align="start" className="w-[200px]">
+                    <div className="space-y-2">
+                      <h4 className="font-medium leading-none mb-3">Set Status</h4>
+                      <button
+                        className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-sm hover:bg-accent"
+                        onClick={() => updateStatus('online')}
+                      >
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        Online
+                      </button>
+                      <button
+                        className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-sm hover:bg-accent"
+                        onClick={() => updateStatus('offline')}
+                      >
+                        <div className="w-2 h-2 rounded-full bg-zinc-500" />
+                        Offline
+                      </button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
               <span className="text-sm font-medium">{user?.username}</span>
             </Button>
