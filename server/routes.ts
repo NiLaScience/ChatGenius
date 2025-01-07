@@ -17,7 +17,13 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const userChannels = await db
-        .select()
+        .select({
+          id: channels.id,
+          name: channels.name,
+          description: channels.description,
+          isPrivate: channels.isPrivate,
+          createdAt: channels.createdAt,
+        })
         .from(channels)
         .leftJoin(channelMembers, eq(channels.id, channelMembers.channelId))
         .where(
@@ -29,6 +35,7 @@ export function registerRoutes(app: Express): Server {
 
       res.json(userChannels);
     } catch (error) {
+      console.error("Error fetching channels:", error);
       res.status(500).send("Error fetching channels");
     }
   });
@@ -48,6 +55,7 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
+      // Add the creator as a channel member with admin privileges
       await db.insert(channelMembers).values({
         channelId: newChannel.id,
         userId: req.user.id,
@@ -56,6 +64,7 @@ export function registerRoutes(app: Express): Server {
 
       res.json(newChannel);
     } catch (error) {
+      console.error("Error creating channel:", error);
       res.status(500).send("Error creating channel");
     }
   });
@@ -68,7 +77,20 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const channelMessages = await db
-        .select()
+        .select({
+          id: messages.id,
+          content: messages.content,
+          channelId: messages.channelId,
+          userId: messages.userId,
+          parentId: messages.parentId,
+          createdAt: messages.createdAt,
+          updatedAt: messages.updatedAt,
+          user: {
+            id: users.id,
+            username: users.username,
+            avatarUrl: users.avatarUrl,
+          },
+        })
         .from(messages)
         .where(eq(messages.channelId, parseInt(req.params.channelId)))
         .leftJoin(users, eq(messages.userId, users.id))
@@ -77,6 +99,7 @@ export function registerRoutes(app: Express): Server {
 
       res.json(channelMessages);
     } catch (error) {
+      console.error("Error fetching messages:", error);
       res.status(500).send("Error fetching messages");
     }
   });

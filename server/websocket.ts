@@ -1,7 +1,7 @@
 import { Server } from "http";
 import { Server as SocketServer } from "socket.io";
 import { db } from "@db";
-import { messages, users, channels, reactions } from "@db/schema";
+import { messages, users } from "@db/schema";
 import { eq } from "drizzle-orm";
 
 export function setupWebSocket(server: Server) {
@@ -16,10 +16,12 @@ export function setupWebSocket(server: Server) {
     console.log("Client connected:", socket.id);
 
     socket.on("join_channel", (channelId: number) => {
+      console.log("Client joining channel:", channelId);
       socket.join(`channel:${channelId}`);
     });
 
     socket.on("leave_channel", (channelId: number) => {
+      console.log("Client leaving channel:", channelId);
       socket.leave(`channel:${channelId}`);
     });
 
@@ -30,46 +32,36 @@ export function setupWebSocket(server: Server) {
       parentId?: number
     }) => {
       try {
+        console.log("Received message:", data);
         const [newMessage] = await db
           .insert(messages)
           .values(data)
           .returning();
 
         const [messageWithUser] = await db
-          .select()
+          .select({
+            id: messages.id,
+            content: messages.content,
+            channelId: messages.channelId,
+            userId: messages.userId,
+            parentId: messages.parentId,
+            createdAt: messages.createdAt,
+            updatedAt: messages.updatedAt,
+            user: {
+              id: users.id,
+              username: users.username,
+              avatarUrl: users.avatarUrl,
+            },
+          })
           .from(messages)
           .where(eq(messages.id, newMessage.id))
           .leftJoin(users, eq(messages.userId, users.id))
           .limit(1);
 
+        console.log("Broadcasting message to channel:", data.channelId);
         io.to(`channel:${data.channelId}`).emit("message", messageWithUser);
       } catch (error) {
         console.error("Error saving message:", error);
-      }
-    });
-
-    socket.on("reaction", async (data: {
-      messageId: number,
-      userId: number,
-      emoji: string
-    }) => {
-      try {
-        const [newReaction] = await db
-          .insert(reactions)
-          .values(data)
-          .returning();
-
-        const message = await db
-          .select()
-          .from(messages)
-          .where(eq(messages.id, data.messageId))
-          .limit(1);
-
-        if (message) {
-          io.to(`channel:${message[0].channelId}`).emit("reaction", newReaction);
-        }
-      } catch (error) {
-        console.error("Error saving reaction:", error);
       }
     });
 
