@@ -129,3 +129,5 @@ export type Channel = typeof channels.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type DirectMessage = typeof directMessages.$inferSelect;
 export type Reaction = typeof reactions.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+export type SelectUser = User;
