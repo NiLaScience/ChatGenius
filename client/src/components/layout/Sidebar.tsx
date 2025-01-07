@@ -68,8 +68,41 @@ export function Sidebar({
 
   return (
     <div className="flex flex-col h-screen bg-sidebar border-r">
-      <div className="p-4 border-b">
+      <div className="p-4 border-b flex justify-between items-center">
         <h1 className="text-xl font-bold text-sidebar-foreground">ChatGenius</h1>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+            >
+              <div className={cn(
+                "h-2 w-2 rounded-full",
+                user?.status === "online" ? "bg-green-500" : "bg-zinc-500"
+              )} />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent side="bottom" align="end" className="w-[200px]">
+            <div className="space-y-2">
+              <h4 className="font-medium leading-none mb-3">Set Status</h4>
+              <button
+                className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-sm hover:bg-accent"
+                onClick={() => updateStatus('online')}
+              >
+                <div className="w-2 h-2 rounded-full bg-green-500" />
+                Online
+              </button>
+              <button
+                className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-sm hover:bg-accent"
+                onClick={() => updateStatus('offline')}
+              >
+                <div className="w-2 h-2 rounded-full bg-zinc-500" />
+                Offline
+              </button>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -95,45 +128,12 @@ export function Sidebar({
               variant="ghost"
               className="w-full justify-start gap-2 px-2"
             >
-              <div className="relative">
-                <Avatar className="h-6 w-6">
-                  <AvatarImage src={user?.avatarUrl} />
-                  <AvatarFallback>
-                    {user?.username?.[0]?.toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <div
-                      className={cn(
-                        "absolute bottom-0 right-0 h-2 w-2 rounded-full border border-background cursor-pointer",
-                        user?.status === "online"
-                          ? "bg-green-500"
-                          : "bg-zinc-500"
-                      )}
-                    />
-                  </PopoverTrigger>
-                  <PopoverContent side="right" align="start" className="w-[200px]">
-                    <div className="space-y-2">
-                      <h4 className="font-medium leading-none mb-3">Set Status</h4>
-                      <button
-                        className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-sm hover:bg-accent"
-                        onClick={() => updateStatus('online')}
-                      >
-                        <div className="w-2 h-2 rounded-full bg-green-500" />
-                        Online
-                      </button>
-                      <button
-                        className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-sm hover:bg-accent"
-                        onClick={() => updateStatus('offline')}
-                      >
-                        <div className="w-2 h-2 rounded-full bg-zinc-500" />
-                        Offline
-                      </button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
+              <Avatar className="h-6 w-6">
+                <AvatarImage src={user?.avatarUrl} />
+                <AvatarFallback>
+                  {user?.username?.[0]?.toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
               <span className="text-sm font-medium">{user?.username}</span>
             </Button>
           </DropdownMenuTrigger>
