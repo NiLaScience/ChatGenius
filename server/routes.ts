@@ -3,11 +3,73 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { setupWebSocket } from "./websocket";
 import { db } from "@db";
-import { channels, messages, channelMembers, users } from "@db/schema";
+import { channels, messages, channelMembers, users, directMessages } from "@db/schema";
 import { eq, and, desc, isNull } from "drizzle-orm";
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
+
+  // Get all users
+  app.get("/api/users", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const allUsers = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          avatarUrl: users.avatarUrl,
+          status: users.status,
+          customStatus: users.customStatus,
+          lastSeen: users.lastSeen,
+        })
+        .from(users);
+
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).send("Error fetching users");
+    }
+  });
+
+  // Get direct messages between two users
+  app.get("/api/users/:userId/messages", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const messages = await db
+        .select({
+          id: directMessages.id,
+          content: directMessages.content,
+          senderId: directMessages.senderId,
+          receiverId: directMessages.receiverId,
+          createdAt: directMessages.createdAt,
+          sender: {
+            id: users.id,
+            username: users.username,
+            avatarUrl: users.avatarUrl,
+          },
+        })
+        .from(directMessages)
+        .where(
+          and(
+            eq(directMessages.senderId, req.user.id),
+            eq(directMessages.receiverId, parseInt(req.params.userId))
+          )
+        )
+        .leftJoin(users, eq(directMessages.senderId, users.id))
+        .orderBy(desc(directMessages.createdAt));
+
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching direct messages:", error);
+      res.status(500).send("Error fetching direct messages");
+    }
+  });
 
   // Channel routes
   app.get("/api/channels", async (req, res) => {

@@ -7,8 +7,9 @@ export const users = pgTable("users", {
   username: text("username").unique().notNull(),
   password: text("password").notNull(),
   avatarUrl: text("avatar_url"),
-  status: text("status").default("online"),
+  status: text("status").default("offline"),
   customStatus: text("custom_status"),
+  lastSeen: timestamp("last_seen").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -40,20 +41,20 @@ export const messages = pgTable("messages", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const directMessages = pgTable("direct_messages", {
+  id: serial("id").primaryKey(),
+  content: text("content").notNull(),
+  senderId: integer("sender_id").references(() => users.id),
+  receiverId: integer("receiver_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const reactions = pgTable("reactions", {
   id: serial("id").primaryKey(),
   emoji: text("emoji").notNull(),
   messageId: integer("message_id").references(() => messages.id),
   userId: integer("user_id").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const files = pgTable("files", {
-  id: serial("id").primaryKey(),
-  filename: text("filename").notNull(),
-  fileUrl: text("file_url").notNull(),
-  contentType: text("content_type").notNull(),
-  messageId: integer("message_id").references(() => messages.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -67,6 +68,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   channelMembers: many(channelMembers),
   messages: many(messages),
   reactions: many(reactions),
+  sentDirectMessages: many(directMessages, { relationName: "sender" }),
+  receivedDirectMessages: many(directMessages, { relationName: "receiver" }),
 }));
 
 export const messagesRelations = relations(messages, ({ one, many }) => ({
@@ -83,7 +86,17 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
     references: [messages.id],
   }),
   reactions: many(reactions),
-  files: many(files),
+}));
+
+export const directMessagesRelations = relations(directMessages, ({ one }) => ({
+  sender: one(users, {
+    fields: [directMessages.senderId],
+    references: [users.id],
+  }),
+  receiver: one(users, {
+    fields: [directMessages.receiverId],
+    references: [users.id],
+  }),
 }));
 
 export const reactionsRelations = relations(reactions, ({ one }) => ({
@@ -104,6 +117,8 @@ export const insertChannelSchema = createInsertSchema(channels);
 export const selectChannelSchema = createSelectSchema(channels);
 export const insertMessageSchema = createInsertSchema(messages);
 export const selectMessageSchema = createSelectSchema(messages);
+export const insertDirectMessageSchema = createInsertSchema(directMessages);
+export const selectDirectMessageSchema = createSelectSchema(directMessages);
 export const insertReactionSchema = createInsertSchema(reactions);
 export const selectReactionSchema = createSelectSchema(reactions);
 
@@ -111,5 +126,5 @@ export const selectReactionSchema = createSelectSchema(reactions);
 export type User = typeof users.$inferSelect;
 export type Channel = typeof channels.$inferSelect;
 export type Message = typeof messages.$inferSelect;
+export type DirectMessage = typeof directMessages.$inferSelect;
 export type Reaction = typeof reactions.$inferSelect;
-export type File = typeof files.$inferSelect;

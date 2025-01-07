@@ -1,7 +1,7 @@
 import { Server } from "http";
 import { Server as SocketServer } from "socket.io";
 import { db } from "@db";
-import { messages, users, reactions } from "@db/schema";
+import { messages, users, reactions, directMessages } from "@db/schema";
 import { eq, and } from "drizzle-orm";
 
 export function setupWebSocket(server: Server) {
@@ -17,8 +17,40 @@ export function setupWebSocket(server: Server) {
     },
   });
 
-  io.on("connection", (socket) => {
+  // Track connected users
+  const connectedUsers = new Map<string, number>();
+
+  io.on("connection", async (socket) => {
     console.log("Client connected:", socket.id);
+
+    // Handle user authentication and status
+    socket.on("authenticate", async (userId: number) => {
+      try {
+        // Update user status to online
+        await db
+          .update(users)
+          .set({ 
+            status: "online",
+            lastSeen: new Date()
+          })
+          .where(eq(users.id, userId));
+
+        // Store the user's connection
+        connectedUsers.set(socket.id, userId);
+
+        // Broadcast user's online status
+        socket.broadcast.emit("user_status", {
+          userId,
+          status: "online",
+          lastSeen: new Date()
+        });
+
+        // Join user's private room for DMs
+        socket.join(`user:${userId}`);
+      } catch (error) {
+        console.error("Error authenticating user:", error);
+      }
+    });
 
     // Join both channel and thread rooms
     socket.on("join_channel", (channelId: number) => {
@@ -31,16 +63,54 @@ export function setupWebSocket(server: Server) {
       socket.join(`thread:${threadId}`);
     });
 
-    socket.on("leave_channel", (channelId: number) => {
-      console.log("Client leaving channel:", channelId);
-      socket.leave(`channel:${channelId}`);
+    // Handle direct messages
+    socket.on("direct_message", async (data: {
+      content: string,
+      senderId: number,
+      receiverId: number
+    }) => {
+      try {
+        console.log("Received direct message:", data);
+
+        // Insert the message into the database
+        const [newMessage] = await db
+          .insert(directMessages)
+          .values({
+            content: data.content,
+            senderId: data.senderId,
+            receiverId: data.receiverId,
+          })
+          .returning();
+
+        if (!newMessage) {
+          throw new Error("Failed to save direct message");
+        }
+
+        // Fetch the complete message with user data
+        const messageWithUser = await db.query.directMessages.findFirst({
+          where: eq(directMessages.id, newMessage.id),
+          with: {
+            sender: true,
+            receiver: true
+          }
+        });
+
+        if (!messageWithUser) {
+          throw new Error("Failed to fetch message with user data");
+        }
+
+        // Emit to both sender and receiver
+        io.to(`user:${data.senderId}`).to(`user:${data.receiverId}`).emit("direct_message", messageWithUser);
+      } catch (error) {
+        console.error("Error saving/broadcasting direct message:", error);
+        socket.emit("direct_message_error", {
+          error: "Failed to send message",
+          details: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
     });
 
-    socket.on("leave_thread", (threadId: number) => {
-      console.log("Client leaving thread:", threadId);
-      socket.leave(`thread:${threadId}`);
-    });
-
+    // Handle channel messages
     socket.on("message", async (data: {
       content: string,
       channelId: number,
@@ -50,7 +120,6 @@ export function setupWebSocket(server: Server) {
       try {
         console.log("Received message:", data);
 
-        // Insert the message into the database
         const [newMessage] = await db
           .insert(messages)
           .values({
@@ -65,7 +134,6 @@ export function setupWebSocket(server: Server) {
           throw new Error("Failed to save message");
         }
 
-        // Fetch the complete message with user data
         const messageWithUser = await db.query.messages.findFirst({
           where: eq(messages.id, newMessage.id),
           with: {
@@ -82,7 +150,6 @@ export function setupWebSocket(server: Server) {
           throw new Error("Failed to fetch message with user data");
         }
 
-        // Emit to both channel and thread if it's a reply
         if (data.parentId) {
           console.log("Broadcasting thread message:", data.parentId);
           io.to(`thread:${data.parentId}`).emit("thread_message", messageWithUser);
@@ -99,6 +166,7 @@ export function setupWebSocket(server: Server) {
       }
     });
 
+    // Handle reactions
     socket.on("reaction", async (data: {
       messageId: number,
       userId: number,
@@ -107,7 +175,6 @@ export function setupWebSocket(server: Server) {
       try {
         console.log("Received reaction:", data);
 
-        // Insert the reaction
         const [newReaction] = await db
           .insert(reactions)
           .values({
@@ -121,7 +188,6 @@ export function setupWebSocket(server: Server) {
           throw new Error("Failed to save reaction");
         }
 
-        // Fetch the complete reaction with user data
         const reactionWithUser = await db.query.reactions.findFirst({
           where: eq(reactions.id, newReaction.id),
           with: {
@@ -133,7 +199,6 @@ export function setupWebSocket(server: Server) {
           throw new Error("Failed to fetch reaction with user data");
         }
 
-        // Find the message and its channel to broadcast to the correct rooms
         const message = await db.query.messages.findFirst({
           where: eq(messages.id, data.messageId)
         });
@@ -148,7 +213,6 @@ export function setupWebSocket(server: Server) {
           reaction: reactionWithUser,
         });
 
-        // Also broadcast to thread if the message is a reply
         if (message.parentId) {
           io.to(`thread:${message.parentId}`).emit("reaction", {
             messageId: data.messageId,
@@ -176,8 +240,34 @@ export function setupWebSocket(server: Server) {
       console.error("Socket error:", error);
     });
 
-    socket.on("disconnect", (reason) => {
+    socket.on("disconnect", async (reason) => {
       console.log("Client disconnected:", socket.id, "Reason:", reason);
+
+      // Update user status to offline
+      const userId = connectedUsers.get(socket.id);
+      if (userId) {
+        try {
+          await db
+            .update(users)
+            .set({ 
+              status: "offline",
+              lastSeen: new Date()
+            })
+            .where(eq(users.id, userId));
+
+          // Broadcast user's offline status
+          socket.broadcast.emit("user_status", {
+            userId,
+            status: "offline",
+            lastSeen: new Date()
+          });
+
+          // Remove from connected users
+          connectedUsers.delete(socket.id);
+        } catch (error) {
+          console.error("Error updating user status:", error);
+        }
+      }
     });
   });
 
