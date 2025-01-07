@@ -11,6 +11,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Settings, LogOut } from "lucide-react";
 import ChannelList from "../chat/ChannelList";
+import UserList from "../chat/UserList";
 import CreateChannel from "../modals/CreateChannel";
 import type { Channel } from "@db/schema";
 
@@ -18,12 +19,16 @@ interface SidebarProps {
   channels: Channel[];
   selectedChannel: number | null;
   onSelectChannel: (channelId: number) => void;
+  selectedUserId: number | null;
+  onSelectUser: (userId: number) => void;
 }
 
 export default function Sidebar({
   channels,
   selectedChannel,
   onSelectChannel,
+  selectedUserId,
+  onSelectUser,
 }: SidebarProps) {
   const { user, logout } = useUser();
   const [showCreateChannel, setShowCreateChannel] = useState(false);
@@ -43,12 +48,19 @@ export default function Sidebar({
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <ChannelList
-          channels={channels}
-          selectedChannel={selectedChannel}
-          onSelectChannel={onSelectChannel}
-          onCreateChannel={() => setShowCreateChannel(true)}
-        />
+        <div className="space-y-4 p-2">
+          <ChannelList
+            channels={channels}
+            selectedChannel={selectedChannel}
+            onSelectChannel={onSelectChannel}
+            onCreateChannel={() => setShowCreateChannel(true)}
+          />
+
+          <UserList
+            selectedUserId={selectedUserId}
+            onSelectUser={onSelectUser}
+          />
+        </div>
       </div>
 
       <div className="p-4 border-t mt-auto">
