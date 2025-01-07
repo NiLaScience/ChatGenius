@@ -29,7 +29,7 @@ export default function ChatPage() {
   };
 
   return (
-    <ResizablePanelGroup direction="horizontal" className="min-h-screen">
+    <ResizablePanelGroup direction="horizontal">
       <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
         <Sidebar
           channels={channels || []}
@@ -48,7 +48,7 @@ export default function ChatPage() {
             <DirectMessageView userId={selectedUserId} />
           ) : (
             <>
-              <div className="px-6 py-4 border-b bg-card">
+              <div className="flex-none px-6 py-4 border-b bg-card">
                 <h2 className="text-xl font-semibold text-card-foreground">
                   {selectedChannelData ? `#${selectedChannelData.name}` : "Select a channel"}
                 </h2>
@@ -59,17 +59,19 @@ export default function ChatPage() {
                 )}
               </div>
 
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1 overflow-hidden relative">
                 {selectedChannel && (
-                  <MessageList
-                    channelId={selectedChannel}
-                    onThreadSelect={setSelectedThread}
-                  />
+                  <div className="absolute inset-0">
+                    <MessageList
+                      channelId={selectedChannel}
+                      onThreadSelect={setSelectedThread}
+                    />
+                  </div>
                 )}
               </div>
 
               {selectedChannel && !selectedThread && (
-                <div className="px-6 py-4 border-t bg-background">
+                <div className="flex-none px-6 py-4 border-t bg-background">
                   <MessageInput channelId={selectedChannel} />
                 </div>
               )}
