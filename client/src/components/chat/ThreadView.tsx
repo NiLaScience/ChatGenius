@@ -13,7 +13,7 @@ interface ThreadViewProps {
 
 export default function ThreadView({ messageId, onClose }: ThreadViewProps) {
   const [parentMessage, setParentMessage] = useState<Message | null>(null);
-  
+
   const { data: replies } = useQuery<Message[]>({
     queryKey: [`/api/messages/${messageId}/replies`],
     enabled: !!messageId,
@@ -32,35 +32,37 @@ export default function ThreadView({ messageId, onClose }: ThreadViewProps) {
 
   if (!parentMessage) {
     return (
-      <div className="h-full flex items-center justify-center">
+      <div className="h-full flex items-center justify-center text-muted-foreground">
         Loading thread...
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col">
-      <div className="p-4 border-b flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold">Thread</h3>
-          <p className="text-sm text-muted-foreground">
-            {replies?.length || 0} replies
-          </p>
+    <div className="h-screen flex flex-col bg-background">
+      <div className="px-6 py-4 border-b bg-card">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-card-foreground">Thread</h3>
+            <p className="text-sm text-muted-foreground">
+              {replies?.length || 0} {replies?.length === 1 ? 'reply' : 'replies'}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-8 w-8 hover:bg-accent"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          className="h-8 w-8"
-        >
-          <X className="h-4 w-4" />
-        </Button>
       </div>
 
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
+      <ScrollArea className="flex-1 px-6 py-4">
+        <div className="space-y-6">
           {/* Parent Message */}
-          <div className="bg-muted p-4 rounded-lg">
+          <div className="bg-accent/50 p-4 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <span className="font-medium">{parentMessage.user?.username}</span>
               <span className="text-xs text-muted-foreground">
@@ -71,9 +73,9 @@ export default function ThreadView({ messageId, onClose }: ThreadViewProps) {
           </div>
 
           {/* Replies */}
-          <div className="pl-4 border-l-2 border-muted space-y-4">
+          <div className="space-y-4">
             {replies?.map((reply) => (
-              <div key={reply.id} className="bg-accent/50 p-3 rounded-lg">
+              <div key={reply.id} className="bg-card p-4 rounded-lg">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-medium">{reply.user?.username}</span>
                   <span className="text-xs text-muted-foreground">
@@ -87,7 +89,7 @@ export default function ThreadView({ messageId, onClose }: ThreadViewProps) {
         </div>
       </ScrollArea>
 
-      <div className="p-4 border-t">
+      <div className="px-6 py-4 border-t bg-background">
         <MessageInput
           channelId={parentMessage.channelId}
           threadId={parentMessage.id}

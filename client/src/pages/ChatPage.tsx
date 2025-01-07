@@ -15,7 +15,7 @@ export default function ChatPage() {
 
   return (
     <ResizablePanelGroup direction="horizontal" className="min-h-screen">
-      <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+      <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
         <Sidebar
           channels={channels || []}
           selectedChannel={selectedChannel}
@@ -25,15 +25,20 @@ export default function ChatPage() {
 
       <ResizableHandle />
 
-      <ResizablePanel defaultSize={60} minSize={40}>
+      <ResizablePanel defaultSize={selectedThread ? 50 : 80} minSize={45}>
         <div className="flex flex-col h-screen">
-          <div className="p-4 border-b">
-            <h2 className="text-xl font-semibold">
+          <div className="px-6 py-4 border-b bg-card">
+            <h2 className="text-xl font-semibold text-card-foreground">
               {selectedChannelData ? `#${selectedChannelData.name}` : "Select a channel"}
             </h2>
+            {selectedChannelData?.description && (
+              <p className="text-sm text-muted-foreground mt-1">
+                {selectedChannelData.description}
+              </p>
+            )}
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-hidden">
             {selectedChannel && (
               <MessageList
                 channelId={selectedChannel}
@@ -43,7 +48,7 @@ export default function ChatPage() {
           </div>
 
           {selectedChannel && !selectedThread && (
-            <div className="p-4 border-t">
+            <div className="px-6 py-4 border-t bg-background">
               <MessageInput channelId={selectedChannel} />
             </div>
           )}
@@ -53,7 +58,7 @@ export default function ChatPage() {
       {selectedThread && (
         <>
           <ResizableHandle />
-          <ResizablePanel defaultSize={20} minSize={20} maxSize={40}>
+          <ResizablePanel defaultSize={30} minSize={25} maxSize={40}>
             <ThreadView
               messageId={selectedThread}
               onClose={() => setSelectedThread(null)}

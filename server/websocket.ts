@@ -66,35 +66,17 @@ export function setupWebSocket(server: Server) {
         }
 
         // Fetch the complete message with user data
-        const [messageWithUser] = await db
-          .select({
-            id: messages.id,
-            content: messages.content,
-            channelId: messages.channelId,
-            userId: messages.userId,
-            parentId: messages.parentId,
-            createdAt: messages.createdAt,
-            updatedAt: messages.updatedAt,
-            user: {
-              id: users.id,
-              username: users.username,
-              avatarUrl: users.avatarUrl,
-            },
+        const messageWithUser = await db.query.messages.findFirst({
+          where: eq(messages.id, newMessage.id),
+          with: {
+            user: true,
             reactions: {
-              id: reactions.id,
-              emoji: reactions.emoji,
-              userId: reactions.userId,
-              user: {
-                id: users.id,
-                username: users.username,
-              },
-            },
-          })
-          .from(messages)
-          .where(eq(messages.id, newMessage.id))
-          .leftJoin(users, eq(messages.userId, users.id))
-          .leftJoin(reactions, eq(messages.id, reactions.messageId))
-          .limit(1);
+              with: {
+                user: true
+              }
+            }
+          }
+        });
 
         if (!messageWithUser) {
           throw new Error("Failed to fetch message with user data");
@@ -128,7 +110,11 @@ export function setupWebSocket(server: Server) {
         // Insert the reaction
         const [newReaction] = await db
           .insert(reactions)
-          .values(data)
+          .values({
+            messageId: data.messageId,
+            userId: data.userId,
+            emoji: data.emoji
+          })
           .returning();
 
         if (!newReaction) {
@@ -136,32 +122,21 @@ export function setupWebSocket(server: Server) {
         }
 
         // Fetch the complete reaction with user data
-        const [reactionWithUser] = await db
-          .select({
-            id: reactions.id,
-            emoji: reactions.emoji,
-            messageId: reactions.messageId,
-            userId: reactions.userId,
-            user: {
-              id: users.id,
-              username: users.username,
-            },
-          })
-          .from(reactions)
-          .where(eq(reactions.id, newReaction.id))
-          .leftJoin(users, eq(reactions.userId, users.id))
-          .limit(1);
+        const reactionWithUser = await db.query.reactions.findFirst({
+          where: eq(reactions.id, newReaction.id),
+          with: {
+            user: true
+          }
+        });
 
         if (!reactionWithUser) {
           throw new Error("Failed to fetch reaction with user data");
         }
 
-        // Find the channel ID for the message to broadcast to the correct room
-        const [message] = await db
-          .select()
-          .from(messages)
-          .where(eq(messages.id, data.messageId))
-          .limit(1);
+        // Find the message and its channel to broadcast to the correct rooms
+        const message = await db.query.messages.findFirst({
+          where: eq(messages.id, data.messageId)
+        });
 
         if (!message) {
           throw new Error("Message not found");
