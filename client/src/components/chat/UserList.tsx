@@ -9,7 +9,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type User } from "@db/schema";
 
@@ -25,12 +25,20 @@ export default function UserList({ onSelectUser, selectedUserId }: UserListProps
   if (isLoading) {
     return (
       <SidebarGroup>
-        <SidebarGroupLabel>Direct Messages</SidebarGroupLabel>
+        <SidebarGroupLabel>
+          <div className="flex items-center gap-2">
+            <ChevronDown className="h-4 w-4" />
+            <span>Direct Messages</span>
+          </div>
+        </SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
             {[1, 2, 3].map((i) => (
               <SidebarMenuItem key={i}>
-                <SidebarMenuButton className="animate-pulse bg-muted/50" />
+                <SidebarMenuButton
+                  className="animate-pulse bg-muted/50"
+                  disabled
+                />
               </SidebarMenuItem>
             ))}
           </SidebarMenu>
@@ -45,10 +53,18 @@ export default function UserList({ onSelectUser, selectedUserId }: UserListProps
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-start px-2"
+          className="w-full justify-start px-2 gap-2"
           onClick={() => setExpanded(!expanded)}
         >
-          Direct Messages ({users?.length || 0})
+          {expanded ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+          <span>Direct Messages</span>
+          <span className="ml-auto text-xs text-muted-foreground">
+            ({users?.length || 0})
+          </span>
         </Button>
       </SidebarGroupLabel>
       {expanded && (
@@ -72,7 +88,7 @@ export default function UserList({ onSelectUser, selectedUserId }: UserListProps
                         )}
                       />
                     </div>
-                    <span className="ml-2">{user.username}</span>
+                    <span className="ml-2 truncate">{user.username}</span>
                   </div>
                   <MessageSquare className="ml-auto h-4 w-4 opacity-60" />
                 </SidebarMenuButton>

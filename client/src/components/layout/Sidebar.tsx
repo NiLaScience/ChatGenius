@@ -50,8 +50,8 @@ export default function Sidebar({
 
   return (
     <SidebarProvider defaultOpen>
-      <SidebarComponent>
-        <SidebarHeader className="border-b">
+      <SidebarComponent className="border-r">
+        <SidebarHeader>
           <h1 className="text-xl font-bold px-4 py-3">ChatGenius</h1>
         </SidebarHeader>
 
@@ -71,7 +71,7 @@ export default function Sidebar({
           </div>
         </SidebarContent>
 
-        <SidebarFooter className="border-t">
+        <SidebarFooter>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
