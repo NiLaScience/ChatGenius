@@ -15,7 +15,7 @@ interface MessageInputProps {
 export default function MessageInput({ channelId, threadId }: MessageInputProps) {
   const [content, setContent] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const { sendMessage } = useMessages(channelId);
+  const { sendMessage } = useMessages(channelId, threadId);
   const socket = useSocket();
   const { user } = useUser();
   const { toast } = useToast();
@@ -34,6 +34,7 @@ export default function MessageInput({ channelId, threadId }: MessageInputProps)
       setIsTyping(true);
       socket?.emit("typing", {
         channelId,
+        threadId,
         username: user?.username,
       });
     }
@@ -49,7 +50,7 @@ export default function MessageInput({ channelId, threadId }: MessageInputProps)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!content.trim()) return;
 
     try {
@@ -81,11 +82,11 @@ export default function MessageInput({ channelId, threadId }: MessageInputProps)
             handleTyping();
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message..."
+          placeholder={threadId ? "Reply in thread..." : "Type a message..."}
           className="min-h-[80px] resize-none"
         />
       </div>
-      
+
       <div className="flex gap-2">
         <Button
           type="button"
@@ -95,7 +96,7 @@ export default function MessageInput({ channelId, threadId }: MessageInputProps)
         >
           <Paperclip className="h-4 w-4" />
         </Button>
-        
+
         <Button
           type="submit"
           size="icon"

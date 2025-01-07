@@ -86,6 +86,17 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
   files: many(files),
 }));
 
+export const reactionsRelations = relations(reactions, ({ one }) => ({
+  message: one(messages, {
+    fields: [reactions.messageId],
+    references: [messages.id],
+  }),
+  user: one(users, {
+    fields: [reactions.userId],
+    references: [users.id],
+  }),
+}));
+
 // Schemas
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
@@ -93,6 +104,8 @@ export const insertChannelSchema = createInsertSchema(channels);
 export const selectChannelSchema = createSelectSchema(channels);
 export const insertMessageSchema = createInsertSchema(messages);
 export const selectMessageSchema = createSelectSchema(messages);
+export const insertReactionSchema = createInsertSchema(reactions);
+export const selectReactionSchema = createSelectSchema(reactions);
 
 // Types
 export type User = typeof users.$inferSelect;

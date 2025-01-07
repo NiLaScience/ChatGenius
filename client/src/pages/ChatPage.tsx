@@ -22,9 +22,9 @@ export default function ChatPage() {
           onSelectChannel={setSelectedChannel}
         />
       </ResizablePanel>
-      
+
       <ResizableHandle />
-      
+
       <ResizablePanel defaultSize={60} minSize={40}>
         <div className="flex flex-col h-screen">
           <div className="p-4 border-b">
@@ -32,7 +32,7 @@ export default function ChatPage() {
               {selectedChannelData ? `#${selectedChannelData.name}` : "Select a channel"}
             </h2>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto">
             {selectedChannel && (
               <MessageList
@@ -41,8 +41,8 @@ export default function ChatPage() {
               />
             )}
           </div>
-          
-          {selectedChannel && (
+
+          {selectedChannel && !selectedThread && (
             <div className="p-4 border-t">
               <MessageInput channelId={selectedChannel} />
             </div>
