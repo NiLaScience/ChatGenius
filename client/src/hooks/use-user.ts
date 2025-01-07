@@ -81,6 +81,13 @@ export function useUser() {
     },
   });
 
+  const guestLoginMutation = useMutation({
+    mutationFn: () => handleRequest('/api/guest-login', 'POST'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+    },
+  });
+
   return {
     user,
     isLoading,
@@ -88,5 +95,6 @@ export function useUser() {
     login: loginMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,
     register: registerMutation.mutateAsync,
+    loginAsGuest: guestLoginMutation.mutateAsync,
   };
 }

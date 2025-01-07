@@ -5,10 +5,11 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").unique().notNull(),
-  password: text("password").notNull(),
+  password: text("password"),  // Make password optional for guest users
   avatarUrl: text("avatar_url"),
   status: text("status").default("offline"),
   customStatus: text("custom_status"),
+  isGuest: boolean("is_guest").default(false),
   lastSeen: timestamp("last_seen").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

@@ -30,7 +30,7 @@ const crypto = {
 
 declare global {
   namespace Express {
-    interface User extends User { }
+    interface User extends User {}
   }
 }
 
@@ -69,6 +69,11 @@ export function setupAuth(app: Express) {
         if (!user) {
           return done(null, false, { message: "Incorrect username." });
         }
+
+        if (!user.password) {
+          return done(null, false, { message: "Invalid login method." });
+        }
+
         const isMatch = await crypto.compare(password, user.password);
         if (!isMatch) {
           return done(null, false, { message: "Incorrect password." });
@@ -125,6 +130,7 @@ export function setupAuth(app: Express) {
         .values({
           username,
           password: hashedPassword,
+          isGuest: false,
         })
         .returning();
 
@@ -173,10 +179,49 @@ export function setupAuth(app: Express) {
     passport.authenticate("local", cb)(req, res, next);
   });
 
+  app.post("/api/guest-login", async (req, res, next) => {
+    try {
+      const guestUsername = `guest_${randomBytes(4).toString('hex')}`;
+
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          username: guestUsername,
+          isGuest: true,
+          status: "online",
+        })
+        .returning();
+
+      req.login(newUser, (err) => {
+        if (err) {
+          return next(err);
+        }
+        return res.json({
+          message: "Guest login successful",
+          user: newUser,
+        });
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.post("/api/logout", (req, res) => {
-    req.logout((err) => {
+    const user = req.user as User;
+    req.logout(async (err) => {
       if (err) {
         return res.status(500).send("Logout failed");
+      }
+
+      // If the user was a guest, delete their account
+      if (user?.isGuest) {
+        try {
+          await db
+            .delete(users)
+            .where(eq(users.id, user.id));
+        } catch (error) {
+          console.error("Error deleting guest user:", error);
+        }
       }
 
       res.json({ message: "Logout successful" });

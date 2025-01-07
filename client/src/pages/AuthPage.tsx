@@ -14,7 +14,7 @@ type FormData = {
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const { login, register } = useUser();
+  const { login, register, loginAsGuest } = useUser();
   const { toast } = useToast();
   const form = useForm<FormData>();
 
@@ -45,13 +45,32 @@ export default function AuthPage() {
     }
   };
 
+  const handleGuestLogin = async () => {
+    setIsLoading(true);
+    try {
+      await loginAsGuest();
+      toast({
+        title: "Welcome, Guest!",
+        description: "You can now use the chat. Note that your messages will be deleted when you leave.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl text-center">ChatGenius</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <Tabs defaultValue="login">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Login</TabsTrigger>
@@ -110,6 +129,31 @@ export default function AuthPage() {
               </form>
             </TabsContent>
           </Tabs>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">Or</span>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleGuestLogin}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
+                Joining as guest...
+              </div>
+            ) : (
+              "Continue as Guest"
+            )}
+          </Button>
         </CardContent>
       </Card>
     </div>
