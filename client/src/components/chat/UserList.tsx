@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useUsers } from "@/hooks/use-users";
 import { Button } from "@/components/ui/button";
-import { UserAvatar } from "@/components/user/UserAvatar";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -12,6 +10,7 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { MessageSquare } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { type User } from "@db/schema";
 
 interface UserListProps {
@@ -28,11 +27,13 @@ export default function UserList({ onSelectUser, selectedUserId }: UserListProps
       <SidebarGroup>
         <SidebarGroupLabel>Direct Messages</SidebarGroupLabel>
         <SidebarGroupContent>
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-          </div>
+          <SidebarMenu>
+            {[1, 2, 3].map((i) => (
+              <SidebarMenuItem key={i}>
+                <SidebarMenuButton className="animate-pulse bg-muted/50" />
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>
     );
@@ -51,21 +52,34 @@ export default function UserList({ onSelectUser, selectedUserId }: UserListProps
         </Button>
       </SidebarGroupLabel>
       {expanded && (
-        <SidebarMenu>
-          {users?.map((user) => (
-            <SidebarMenuItem key={user.id}>
-              <SidebarMenuButton
-                onClick={() => onSelectUser(user.id)}
-                isActive={selectedUserId === user.id}
-                className="w-full justify-start gap-2"
-              >
-                <UserAvatar user={user} className="h-6 w-6" />
-                <span>{user.username}</span>
-                <MessageSquare className="ml-auto h-4 w-4 opacity-60" />
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            {users?.map((user) => (
+              <SidebarMenuItem key={user.id}>
+                <SidebarMenuButton
+                  onClick={() => onSelectUser(user.id)}
+                  isActive={selectedUserId === user.id}
+                >
+                  <div className="relative flex items-center">
+                    <div className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted">
+                      {user.avatarUrl}
+                      <div
+                        className={cn(
+                          "absolute bottom-0 right-0 h-2 w-2 rounded-full border border-background",
+                          user.status === "online"
+                            ? "bg-green-500"
+                            : "bg-zinc-500"
+                        )}
+                      />
+                    </div>
+                    <span className="ml-2">{user.username}</span>
+                  </div>
+                  <MessageSquare className="ml-auto h-4 w-4 opacity-60" />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroupContent>
       )}
     </SidebarGroup>
   );
