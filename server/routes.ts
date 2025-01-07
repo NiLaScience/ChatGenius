@@ -4,7 +4,7 @@ import { setupAuth } from "./auth";
 import { setupWebSocket } from "./websocket";
 import { db } from "@db";
 import { channels, messages, channelMembers, users } from "@db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, isNull } from "drizzle-orm";
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -55,7 +55,6 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
-      // Add the creator as a channel member with admin privileges
       await db.insert(channelMembers).values({
         channelId: newChannel.id,
         userId: req.user.id,
@@ -92,7 +91,12 @@ export function registerRoutes(app: Express): Server {
           },
         })
         .from(messages)
-        .where(eq(messages.channelId, parseInt(req.params.channelId)))
+        .where(
+          and(
+            eq(messages.channelId, parseInt(req.params.channelId)),
+            isNull(messages.parentId) // Only get top-level messages
+          )
+        )
         .leftJoin(users, eq(messages.userId, users.id))
         .orderBy(desc(messages.createdAt))
         .limit(50);
@@ -101,6 +105,77 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching messages:", error);
       res.status(500).send("Error fetching messages");
+    }
+  });
+
+  // Thread routes
+  app.get("/api/messages/:messageId/replies", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const replies = await db
+        .select({
+          id: messages.id,
+          content: messages.content,
+          channelId: messages.channelId,
+          userId: messages.userId,
+          parentId: messages.parentId,
+          createdAt: messages.createdAt,
+          updatedAt: messages.updatedAt,
+          user: {
+            id: users.id,
+            username: users.username,
+            avatarUrl: users.avatarUrl,
+          },
+        })
+        .from(messages)
+        .where(eq(messages.parentId, parseInt(req.params.messageId)))
+        .leftJoin(users, eq(messages.userId, users.id))
+        .orderBy(messages.createdAt);
+
+      res.json(replies);
+    } catch (error) {
+      console.error("Error fetching replies:", error);
+      res.status(500).send("Error fetching replies");
+    }
+  });
+
+  app.get("/api/messages/:messageId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const [message] = await db
+        .select({
+          id: messages.id,
+          content: messages.content,
+          channelId: messages.channelId,
+          userId: messages.userId,
+          parentId: messages.parentId,
+          createdAt: messages.createdAt,
+          updatedAt: messages.updatedAt,
+          user: {
+            id: users.id,
+            username: users.username,
+            avatarUrl: users.avatarUrl,
+          },
+        })
+        .from(messages)
+        .where(eq(messages.id, parseInt(req.params.messageId)))
+        .leftJoin(users, eq(messages.userId, users.id))
+        .limit(1);
+
+      if (!message) {
+        return res.status(404).send("Message not found");
+      }
+
+      res.json(message);
+    } catch (error) {
+      console.error("Error fetching message:", error);
+      res.status(500).send("Error fetching message");
     }
   });
 
