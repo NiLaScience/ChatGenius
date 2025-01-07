@@ -6,10 +6,15 @@ import { eq, and } from "drizzle-orm";
 
 export function setupWebSocket(server: Server) {
   const io = new SocketServer(server, {
+    path: "/socket.io",
     cors: {
       origin: "*",
       methods: ["GET", "POST"]
-    }
+    },
+    serveClient: false,
+    connectionStateRecovery: {
+      maxDisconnectionDuration: 2 * 60 * 1000,
+    },
   });
 
   io.on("connection", (socket) => {
@@ -44,11 +49,23 @@ export function setupWebSocket(server: Server) {
     }) => {
       try {
         console.log("Received message:", data);
+
+        // Insert the message into the database
         const [newMessage] = await db
           .insert(messages)
-          .values(data)
+          .values({
+            content: data.content,
+            channelId: data.channelId,
+            userId: data.userId,
+            parentId: data.parentId || null,
+          })
           .returning();
 
+        if (!newMessage) {
+          throw new Error("Failed to save message");
+        }
+
+        // Fetch the complete message with user data
         const [messageWithUser] = await db
           .select({
             id: messages.id,
@@ -69,6 +86,10 @@ export function setupWebSocket(server: Server) {
           .leftJoin(users, eq(messages.userId, users.id))
           .limit(1);
 
+        if (!messageWithUser) {
+          throw new Error("Failed to fetch message with user data");
+        }
+
         // Emit to both channel and thread if it's a reply
         if (data.parentId) {
           console.log("Broadcasting thread message:", data.parentId);
@@ -78,7 +99,11 @@ export function setupWebSocket(server: Server) {
         console.log("Broadcasting message to channel:", data.channelId);
         io.to(`channel:${data.channelId}`).emit("message", messageWithUser);
       } catch (error) {
-        console.error("Error saving message:", error);
+        console.error("Error saving/broadcasting message:", error);
+        socket.emit("message_error", {
+          error: "Failed to send message",
+          details: error instanceof Error ? error.message : "Unknown error"
+        });
       }
     });
 
@@ -90,8 +115,12 @@ export function setupWebSocket(server: Server) {
       }
     });
 
-    socket.on("disconnect", () => {
-      console.log("Client disconnected:", socket.id);
+    socket.on("error", (error) => {
+      console.error("Socket error:", error);
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("Client disconnected:", socket.id, "Reason:", reason);
     });
   });
 

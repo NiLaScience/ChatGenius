@@ -6,22 +6,31 @@ export function useSocket() {
 
   useEffect(() => {
     if (!socket.current) {
-      socket.current = io("/", {
+      socket.current = io({
         path: "/socket.io",
+        autoConnect: true,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
       });
 
       socket.current.on("connect", () => {
-        console.log("Connected to WebSocket server");
+        console.log("Connected to WebSocket server with ID:", socket.current?.id);
       });
 
-      socket.current.on("disconnect", () => {
-        console.log("Disconnected from WebSocket server");
+      socket.current.on("connect_error", (error) => {
+        console.error("Socket connection error:", error);
+      });
+
+      socket.current.on("disconnect", (reason) => {
+        console.log("Disconnected from WebSocket server:", reason);
       });
     }
 
     return () => {
       if (socket.current) {
         socket.current.disconnect();
+        socket.current = null;
       }
     };
   }, []);

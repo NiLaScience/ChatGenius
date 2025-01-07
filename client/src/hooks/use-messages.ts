@@ -1,13 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSocket } from "./use-socket";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useUser } from "./use-user";
+import { useToast } from "@/hooks/use-toast";
 import type { Message } from "@db/schema";
 
 export function useMessages(channelId: number, threadId?: number) {
   const queryClient = useQueryClient();
   const socket = useSocket();
   const { user } = useUser();
+  const { toast } = useToast();
 
   // Query for messages - either channel messages or thread replies
   const queryKey = threadId 
@@ -19,15 +21,53 @@ export function useMessages(channelId: number, threadId?: number) {
     enabled: threadId ? !!threadId : !!channelId,
   });
 
+  const updateMessages = useCallback((newMessage: Message, queryKey: string[]) => {
+    queryClient.setQueryData<Message[]>(queryKey, (oldMessages = []) => {
+      // Check if message already exists
+      const exists = oldMessages.some(msg => msg.id === newMessage.id);
+      if (exists) return oldMessages;
+
+      // Add new message and sort by creation time
+      return [...oldMessages, newMessage].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+    });
+  }, [queryClient]);
+
   const sendMessage = useMutation({
     mutationFn: async (content: string) => {
-      if (!socket || !user) throw new Error("Socket not connected or user not logged in");
+      if (!socket || !user) {
+        throw new Error("Socket not connected or user not logged in");
+      }
 
-      socket.emit("message", {
-        content,
-        channelId,
-        userId: user.id,
-        parentId: threadId, // Include parentId for thread replies
+      return new Promise<void>((resolve, reject) => {
+        socket.emit("message", {
+          content,
+          channelId,
+          userId: user.id,
+          parentId: threadId,
+        });
+
+        // Wait for error or success
+        const errorHandler = (error: any) => {
+          socket.off("message_error", errorHandler);
+          reject(error);
+        };
+
+        socket.once("message_error", errorHandler);
+
+        // Resolve after a short delay if no error received
+        setTimeout(() => {
+          socket.off("message_error", errorHandler);
+          resolve();
+        }, 1000);
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error sending message",
+        description: error.message || "Please try again",
       });
     },
   });
@@ -48,25 +88,30 @@ export function useMessages(channelId: number, threadId?: number) {
     }
 
     // Handle new messages
-    socket.on("message", (newMessage: Message) => {
+    const messageHandler = (newMessage: Message) => {
       console.log("Received new channel message:", newMessage);
-      if (!threadId) { // Only update channel messages if not in a thread
-        queryClient.setQueryData(
-          [`/api/channels/${channelId}/messages`],
-          (old: Message[] = []) => [...old, newMessage]
-        );
+      if (!threadId && newMessage.channelId === channelId) {
+        updateMessages(newMessage, [`/api/channels/${channelId}/messages`]);
       }
-    });
+    };
 
     // Handle thread messages
-    socket.on("thread_message", (newMessage: Message) => {
+    const threadMessageHandler = (newMessage: Message) => {
       console.log("Received new thread message:", newMessage);
       if (threadId === newMessage.parentId) {
-        queryClient.setQueryData(
-          [`/api/messages/${threadId}/replies`],
-          (old: Message[] = []) => [...old, newMessage]
-        );
+        updateMessages(newMessage, [`/api/messages/${threadId}/replies`]);
       }
+    };
+
+    socket.on("message", messageHandler);
+    socket.on("thread_message", threadMessageHandler);
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+      toast({
+        variant: "destructive",
+        title: "Connection Error",
+        description: "Lost connection to the chat server. Trying to reconnect...",
+      });
     });
 
     return () => {
@@ -78,13 +123,14 @@ export function useMessages(channelId: number, threadId?: number) {
         console.log("Leaving thread:", threadId);
         socket.emit("leave_thread", threadId);
       }
-      socket.off("message");
-      socket.off("thread_message");
+      socket.off("message", messageHandler);
+      socket.off("thread_message", threadMessageHandler);
+      socket.off("connect_error");
     };
-  }, [channelId, threadId, socket, queryClient]);
+  }, [channelId, threadId, socket, updateMessages, toast]);
 
   return {
-    messages,
+    messages: messages || [],
     isLoading,
     sendMessage: sendMessage.mutateAsync,
   };
