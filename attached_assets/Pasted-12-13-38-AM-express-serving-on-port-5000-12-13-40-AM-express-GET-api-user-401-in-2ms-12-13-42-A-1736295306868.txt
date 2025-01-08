@@ -1,0 +1,147 @@
+12:13:38 AM [express] serving on port 5000
+12:13:40 AM [express] GET /api/user 401 in 2ms
+12:13:42 AM [express] GET /api/user 401 in 1ms
+12:13:42 AM [express] GET /api/user 401 in 1ms
+12:13:43 AM [express] GET /api/user 401 in 1ms
+12:14:07 AM [express] POST /api/login 200 in 194ms :: {"message":"Login successful","user":{"id":9,"u…
+12:14:07 AM [express] GET /api/user 304 in 32ms :: {"id":9,"username":"alice","avatarUrl":"👩","statu…
+12:14:07 AM [express] GET /api/users 304 in 60ms :: [{"id":9,"username":"alice","avatarUrl":"👩","sta…
+12:14:07 AM [express] GET /api/channels 304 in 163ms :: [{"id":3,"name":"random","description":"Rando…
+Client connected: 82p7sLOwIauQH6SgAAAG
+Client connected: D7A9tDPyHBKHv25gAAAI
+12:14:10 AM [express] GET /api/channels/3/messages 200 in 63ms :: [{"id":64,"content":"here","channel…
+Client connected: EuSJ6o44GsjkuuroAAAK
+12:14:10 AM [express] GET /api/messages/64/replies 200 in 62ms :: []
+12:14:10 AM [express] GET /api/messages/63/replies 200 in 60ms :: []
+12:14:10 AM [express] GET /api/messages/60/replies 304 in 63ms :: []
+12:14:10 AM [express] GET /api/messages/59/replies 304 in 164ms :: []
+12:14:10 AM [express] GET /api/messages/58/replies 304 in 168ms :: []
+12:14:11 AM [express] GET /api/messages/57/replies 304 in 64ms :: []
+12:14:11 AM [express] GET /api/messages/56/replies 304 in 62ms :: []
+12:14:11 AM [express] GET /api/messages/55/replies 304 in 62ms :: []
+12:14:11 AM [express] GET /api/messages/33/replies 304 in 61ms :: [{"id":34,"content":"Nice!","channe…
+12:14:11 AM [express] GET /api/messages/29/replies 304 in 64ms :: [{"id":30,"content":"Nice!","channe…
+Client joining channel: 3
+12:14:11 AM [express] GET /api/messages/25/replies 304 in 63ms :: [{"id":26,"content":"Nice!","channe…
+12:14:11 AM [express] GET /api/messages/21/replies 200 in 62ms :: [{"id":22,"content":"Nice!","channe…
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+12:14:31 AM [express] POST /api/upload 200 in 857ms :: {"url":"/uploads/1736295270586-900505413.pdf"}
+Received message: { content: 'there you go', channelId: 3, userId: 9 }
+Client joining channel: 3
+Error saving/broadcasting message: error: there is no parameter $1
+    at file:///home/runner/ChatGenius/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Socket.<anonymous> (/home/runner/ChatGenius/server/websocket.ts:82:24) {
+  length: 94,
+  severity: 'ERROR',
+  code: '42P02',
+  detail: undefined,
+  hint: undefined,
+  position: '83',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_expr.c',
+  line: '864',
+  routine: 'transformParamRef'
+}
+Client joining channel: 3
+Client joining channel: 3
+12:14:32 AM [express] POST /api/upload 200 in 5449ms :: {"url":"/uploads/1736295266811-239617808.pdf"}
+Received message: { content: 'there you go', channelId: 3, userId: 9 }
+Client joining channel: 3
+Error saving/broadcasting message: error: there is no parameter $1
+    at file:///home/runner/ChatGenius/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Socket.<anonymous> (/home/runner/ChatGenius/server/websocket.ts:82:24) {
+  length: 94,
+  severity: 'ERROR',
+  code: '42P02',
+  detail: undefined,
+  hint: undefined,
+  position: '83',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_expr.c',
+  line: '864',
+  routine: 'transformParamRef'
+}
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+12:14:37 AM [express] GET /api/users 304 in 60ms :: [{"id":9,"username":"alice","avatarUrl":"👩","sta…
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+12:14:40 AM [express] POST /api/upload 200 in 808ms :: {"url":"/uploads/1736295279583-217652431.pdf"}
+Received message: { content: 'oh no', channelId: 3, userId: 9 }
+Client joining channel: 3
+Error saving/broadcasting message: error: there is no parameter $1
+    at file:///home/runner/ChatGenius/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Socket.<anonymous> (/home/runner/ChatGenius/server/websocket.ts:82:24) {
+  length: 94,
+  severity: 'ERROR',
+  code: '42P02',
+  detail: undefined,
+  hint: undefined,
+  position: '83',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_expr.c',
+  line: '864',
+  routine: 'transformParamRef'
+}
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
