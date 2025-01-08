@@ -1,7 +1,7 @@
 import { Server } from "http";
 import { Server as SocketServer } from "socket.io";
 import { db } from "@db";
-import { messages, users, reactions, directMessages } from "@db/schema";
+import { messages, users, reactions, directMessages, fileAttachments } from "@db/schema";
 import { eq, and } from "drizzle-orm";
 
 export function setupWebSocket(server: Server) {
@@ -52,7 +52,7 @@ export function setupWebSocket(server: Server) {
       }
     });
 
-    // Join both channel and thread rooms
+    // Join channel room
     socket.on("join_channel", (channelId: number) => {
       console.log("Client joining channel:", channelId);
       socket.join(`channel:${channelId}`);
@@ -61,6 +61,78 @@ export function setupWebSocket(server: Server) {
     socket.on("join_thread", (threadId: number) => {
       console.log("Client joining thread:", threadId);
       socket.join(`thread:${threadId}`);
+    });
+
+    // Handle messages
+    socket.on("message", async (data: {
+      content: string,
+      channelId: number,
+      userId: number,
+      parentId?: number,
+      fileAttachment?: {
+        fileName: string,
+        fileUrl: string,
+        fileType: string
+      }
+    }) => {
+      try {
+        console.log("Received message:", data);
+
+        // Insert the message
+        const [newMessage] = await db
+          .insert(messages)
+          .values({
+            content: data.content,
+            channelId: data.channelId,
+            userId: data.userId,
+            parentId: data.parentId || null,
+          })
+          .returning();
+
+        if (!newMessage) {
+          throw new Error("Failed to save message");
+        }
+
+        // If there's a file attachment, create it
+        if (data.fileAttachment) {
+          await db
+            .insert(fileAttachments)
+            .values({
+              fileName: data.fileAttachment.fileName,
+              fileUrl: data.fileAttachment.fileUrl,
+              fileType: data.fileAttachment.fileType,
+              messageId: newMessage.id,
+            });
+        }
+
+        // Fetch the complete message with user and file attachment data
+        const messageWithUser = await db.query.messages.findFirst({
+          where: eq(messages.id, newMessage.id),
+          with: {
+            user: true,
+            fileAttachment: true
+          }
+        });
+
+        if (!messageWithUser) {
+          throw new Error("Failed to fetch message with user data");
+        }
+
+        // Broadcast based on message type
+        if (data.parentId) {
+          console.log("Broadcasting thread message:", data.parentId);
+          io.to(`thread:${data.parentId}`).emit("thread_message", messageWithUser);
+        }
+
+        console.log("Broadcasting message to channel:", data.channelId);
+        io.to(`channel:${data.channelId}`).emit("message", messageWithUser);
+      } catch (error) {
+        console.error("Error saving/broadcasting message:", error);
+        socket.emit("message_error", {
+          error: "Failed to send message",
+          details: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
     });
 
     // Handle direct messages
@@ -104,62 +176,6 @@ export function setupWebSocket(server: Server) {
       } catch (error) {
         console.error("Error saving/broadcasting direct message:", error);
         socket.emit("direct_message_error", {
-          error: "Failed to send message",
-          details: error instanceof Error ? error.message : "Unknown error"
-        });
-      }
-    });
-
-    // Handle channel messages
-    socket.on("message", async (data: {
-      content: string,
-      channelId: number,
-      userId: number,
-      parentId?: number
-    }) => {
-      try {
-        console.log("Received message:", data);
-
-        const [newMessage] = await db
-          .insert(messages)
-          .values({
-            content: data.content,
-            channelId: data.channelId,
-            userId: data.userId,
-            parentId: data.parentId || null,
-          })
-          .returning();
-
-        if (!newMessage) {
-          throw new Error("Failed to save message");
-        }
-
-        const messageWithUser = await db.query.messages.findFirst({
-          where: eq(messages.id, newMessage.id),
-          with: {
-            user: true,
-            reactions: {
-              with: {
-                user: true
-              }
-            }
-          }
-        });
-
-        if (!messageWithUser) {
-          throw new Error("Failed to fetch message with user data");
-        }
-
-        if (data.parentId) {
-          console.log("Broadcasting thread message:", data.parentId);
-          io.to(`thread:${data.parentId}`).emit("thread_message", messageWithUser);
-        }
-
-        console.log("Broadcasting message to channel:", data.channelId);
-        io.to(`channel:${data.channelId}`).emit("message", messageWithUser);
-      } catch (error) {
-        console.error("Error saving/broadcasting message:", error);
-        socket.emit("message_error", {
           error: "Failed to send message",
           details: error instanceof Error ? error.message : "Unknown error"
         });
