@@ -297,6 +297,70 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Message routes
+  app.post("/api/channels/:channelId/messages", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const { content, fileAttachment } = req.body;
+
+      // Create the message first
+      const [message] = await db
+        .insert(messages)
+        .values({
+          content,
+          channelId: parseInt(req.params.channelId),
+          userId: req.user.id,
+          parentId: req.body.parentId,
+        })
+        .returning();
+
+      // If there's a file attachment, create it
+      if (fileAttachment) {
+        await db.insert(fileAttachments).values({
+          fileName: fileAttachment.fileName,
+          fileUrl: fileAttachment.fileUrl,
+          fileType: fileAttachment.fileType,
+          messageId: message.id,
+        });
+      }
+
+      // Fetch the complete message with user and file attachment
+      const [fullMessage] = await db
+        .select({
+          id: messages.id,
+          content: messages.content,
+          channelId: messages.channelId,
+          userId: messages.userId,
+          parentId: messages.parentId,
+          createdAt: messages.createdAt,
+          updatedAt: messages.updatedAt,
+          user: {
+            id: users.id,
+            username: users.username,
+            avatarUrl: users.avatarUrl,
+          },
+          fileAttachment: {
+            fileName: fileAttachments.fileName,
+            fileUrl: fileAttachments.fileUrl,
+            fileType: fileAttachments.fileType,
+          },
+        })
+        .from(messages)
+        .where(eq(messages.id, message.id))
+        .leftJoin(users, eq(messages.userId, users.id))
+        .leftJoin(fileAttachments, eq(messages.id, fileAttachments.messageId))
+        .limit(1);
+
+      res.json(fullMessage);
+    } catch (error) {
+      console.error("Error creating message:", error);
+      res.status(500).send("Error creating message");
+    }
+  });
+
+  // Update the messages fetch endpoint to include file attachments
   app.get("/api/channels/:channelId/messages", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -317,6 +381,11 @@ export function registerRoutes(app: Express): Server {
             username: users.username,
             avatarUrl: users.avatarUrl,
           },
+          fileAttachment: {
+            fileName: fileAttachments.fileName,
+            fileUrl: fileAttachments.fileUrl,
+            fileType: fileAttachments.fileType,
+          },
         })
         .from(messages)
         .where(
@@ -326,6 +395,7 @@ export function registerRoutes(app: Express): Server {
           )
         )
         .leftJoin(users, eq(messages.userId, users.id))
+        .leftJoin(fileAttachments, eq(messages.id, fileAttachments.messageId))
         .orderBy(desc(messages.createdAt))
         .limit(50);
 
