@@ -26,7 +26,6 @@ export function setupWebSocket(server: Server) {
     // Handle user authentication and status
     socket.on("authenticate", async (userId: number) => {
       try {
-        // Update user status to online
         await db
           .update(users)
           .set({ 
@@ -35,24 +34,20 @@ export function setupWebSocket(server: Server) {
           })
           .where(eq(users.id, userId));
 
-        // Store the user's connection
         connectedUsers.set(socket.id, userId);
 
-        // Broadcast user's online status
         socket.broadcast.emit("user_status", {
           userId,
           status: "online",
           lastSeen: new Date()
         });
 
-        // Join user's private room for DMs
         socket.join(`user:${userId}`);
       } catch (error) {
         console.error("Error authenticating user:", error);
       }
     });
 
-    // Join channel room
     socket.on("join_channel", (channelId: number) => {
       console.log("Client joining channel:", channelId);
       socket.join(`channel:${channelId}`);
@@ -78,65 +73,69 @@ export function setupWebSocket(server: Server) {
       try {
         console.log("Received message:", data);
 
-        // Insert the message using raw SQL
-        const result = await db.execute<{ id: number }>(
-          `INSERT INTO messages (content, channel_id, user_id, parent_id)
-           VALUES ($1, $2, $3, $4)
-           RETURNING id`,
-          [data.content, data.channelId, data.userId, data.parentId || null]
-        );
+        // Insert message first
+        const [newMessage] = await db
+          .insert(messages)
+          .values({
+            content: data.content,
+            channelId: data.channelId,
+            userId: data.userId,
+            parentId: data.parentId || null,
+          })
+          .returning();
 
-        const messageId = result[0].id;
+        if (!newMessage) {
+          throw new Error("Failed to save message");
+        }
 
         // If there's a file attachment, create it
         if (data.fileAttachment) {
-          await db.execute(
-            `INSERT INTO file_attachments (file_name, file_url, file_type, message_id)
-             VALUES ($1, $2, $3, $4)`,
-            [
-              data.fileAttachment.fileName,
-              data.fileAttachment.fileUrl,
-              data.fileAttachment.fileType,
-              messageId
-            ]
-          );
+          await db
+            .insert(fileAttachments)
+            .values({
+              fileName: data.fileAttachment.fileName,
+              fileUrl: data.fileAttachment.fileUrl,
+              fileType: data.fileAttachment.fileType,
+              messageId: newMessage.id,
+            });
         }
 
-        // Fetch the complete message with user and file attachment data
-        const [messageWithUser] = await db.execute(
-          `SELECT 
+        // Fetch complete message with user and file attachment
+        const [messageWithData] = await db.execute(`
+          SELECT 
             m.*,
-            json_build_object(
+            jsonb_build_object(
               'id', u.id,
               'username', u.username,
               'avatarUrl', u.avatar_url
             ) as user,
-            json_build_object(
-              'fileName', fa.file_name,
-              'fileUrl', fa.file_url,
-              'fileType', fa.file_type
-            ) as file_attachment
-           FROM messages m
-           LEFT JOIN users u ON m.user_id = u.id
-           LEFT JOIN file_attachments fa ON m.id = fa.message_id
-           WHERE m.id = $1`,
-          [messageId]
-        );
+            CASE 
+              WHEN fa.id IS NOT NULL THEN
+                jsonb_build_object(
+                  'fileName', fa.file_name,
+                  'fileUrl', fa.file_url,
+                  'fileType', fa.file_type
+                )
+              ELSE NULL
+            END as file_attachment
+          FROM messages m
+          LEFT JOIN users u ON m.user_id = u.id
+          LEFT JOIN file_attachments fa ON m.id = fa.message_id
+          WHERE m.id = $1
+        `, [newMessage.id]);
 
-        if (!messageWithUser) {
-          throw new Error("Failed to fetch message with user data");
+        if (!messageWithData) {
+          throw new Error("Failed to fetch message data");
         }
 
-        // Broadcast based on message type
+        // Broadcast message
         if (data.parentId) {
-          console.log("Broadcasting thread message:", data.parentId);
-          io.to(`thread:${data.parentId}`).emit("thread_message", messageWithUser);
+          io.to(`thread:${data.parentId}`).emit("thread_message", messageWithData);
         }
+        io.to(`channel:${data.channelId}`).emit("message", messageWithData);
 
-        console.log("Broadcasting message to channel:", data.channelId);
-        io.to(`channel:${data.channelId}`).emit("message", messageWithUser);
       } catch (error) {
-        console.error("Error saving/broadcasting message:", error);
+        console.error("Error handling message:", error);
         socket.emit("message_error", {
           error: "Failed to send message",
           details: error instanceof Error ? error.message : "Unknown error"
@@ -268,7 +267,6 @@ export function setupWebSocket(server: Server) {
     socket.on("disconnect", async (reason) => {
       console.log("Client disconnected:", socket.id, "Reason:", reason);
 
-      // Update user status to offline
       const userId = connectedUsers.get(socket.id);
       if (userId) {
         try {
@@ -280,14 +278,12 @@ export function setupWebSocket(server: Server) {
             })
             .where(eq(users.id, userId));
 
-          // Broadcast user's offline status
           socket.broadcast.emit("user_status", {
             userId,
             status: "offline",
             lastSeen: new Date()
           });
 
-          // Remove from connected users
           connectedUsers.delete(socket.id);
         } catch (error) {
           console.error("Error updating user status:", error);
