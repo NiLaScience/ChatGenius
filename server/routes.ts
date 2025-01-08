@@ -477,6 +477,71 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Search endpoint
+  app.get("/api/search", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const query = req.query.q as string;
+    if (!query) {
+      return res.status(400).send("Search query is required");
+    }
+
+    try {
+      const searchResults = await db.execute(`
+        WITH search_results AS (
+          -- Search in messages
+          SELECT 
+            m.id,
+            'message' as type,
+            m.content,
+            m.channel_id as "channelId",
+            c.name as "channelName",
+            u.username,
+            m.created_at as "createdAt",
+            m.parent_id as "threadId",
+            NULL as "fileName",
+            NULL as "fileUrl",
+            NULL as "fileType"
+          FROM messages m
+          JOIN users u ON m.user_id = u.id
+          JOIN channels c ON m.channel_id = c.id
+          WHERE m.content ILIKE $1
+
+          UNION ALL
+
+          -- Search in file attachments
+          SELECT 
+            m2.id,
+            'file' as type,
+            m2.content,
+            m2.channel_id as "channelId",
+            c2.name as "channelName",
+            u2.username,
+            m2.created_at as "createdAt",
+            m2.parent_id as "threadId",
+            fa.file_name as "fileName",
+            fa.file_url as "fileUrl",
+            fa.file_type as "fileType"
+          FROM file_attachments fa
+          JOIN messages m2 ON fa.message_id = m2.id
+          JOIN users u2 ON m2.user_id = u2.id
+          JOIN channels c2 ON m2.channel_id = c2.id
+          WHERE fa.file_name ILIKE $1
+        )
+        SELECT * FROM search_results
+        ORDER BY "createdAt" DESC
+        LIMIT 50
+      `, [`%${query}%`]);
+
+      res.json(searchResults);
+    } catch (error) {
+      console.error("Error searching:", error);
+      res.status(500).send("Error performing search");
+    }
+  });
+
   const httpServer = createServer(app);
   setupWebSocket(httpServer);
 
