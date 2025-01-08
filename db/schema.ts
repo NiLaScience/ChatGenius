@@ -32,15 +32,6 @@ export const channelMembers = pgTable("channel_members", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const fileAttachments = pgTable("file_attachments", {
-  id: serial("id").primaryKey(),
-  fileName: text("file_name").notNull(),
-  fileUrl: text("file_url").notNull(),
-  fileType: text("file_type").notNull(), // 'image' or 'pdf'
-  messageId: integer("message_id").references(() => messages.id),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
   content: text("content").notNull(),
@@ -49,6 +40,15 @@ export const messages = pgTable("messages", {
   parentId: integer("parent_id").references(() => messages.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const fileAttachments = pgTable("file_attachments", {
+  id: serial("id").primaryKey(),
+  fileName: text("file_name").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileType: text("file_type").notNull(),
+  messageId: integer("message_id").references(() => messages.id),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const directMessages = pgTable("direct_messages", {
@@ -96,7 +96,7 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
     references: [messages.id],
   }),
   reactions: many(reactions),
-  attachments: many(fileAttachments),
+  fileAttachment: one(fileAttachments, { fields: [messages.id], references: [fileAttachments.messageId] }), 
 }));
 
 export const fileAttachmentsRelations = relations(fileAttachments, ({ one }) => ({

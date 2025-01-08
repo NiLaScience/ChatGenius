@@ -1,0 +1,48 @@
+12:11:15 AM [express] GET /api/users 304 in 57ms :: [{"id":9,"username":"alice","avatarUrl":"👩","sta…
+Client disconnected: 4xmdpueN256XKA9uAAAQ Reason: client namespace disconnect
+Client disconnected: nVGdk7QWoF3ugW2TAAAS Reason: client namespace disconnect
+Client joining channel: 3
+Client connected: EoTuSdcW1RrsA0HRAAAX
+Client connected: YV_llTmZ0R9GDz3VAAAa
+Client joining channel: 3
+12:11:22 AM [express] POST /api/upload 200 in 257ms :: {"url":"/uploads/1736295082203-902854839.jpg"}
+Received message: { content: '', channelId: 3, userId: 9 }
+Client joining channel: 3
+Error saving/broadcasting message: TypeError: Cannot read properties of undefined (reading 'referencedTable')
+    at normalizeRelation (/home/runner/ChatGenius/node_modules/src/relations.ts:571:74)
+    at PgDialect.buildRelationalQueryWithoutPK (/home/runner/ChatGenius/node_modules/src/pg-core/dialect.ts:1282:32)
+    at QueryPromise._getQuery (/home/runner/ChatGenius/node_modules/src/pg-core/query-builders/query.ts:117:23)
+    at QueryPromise._toSQL (/home/runner/ChatGenius/node_modules/src/pg-core/query-builders/query.ts:134:22)
+    at <anonymous> (/home/runner/ChatGenius/node_modules/src/pg-core/query-builders/query.ts:92:39)
+    at Object.startActiveSpan (/home/runner/ChatGenius/node_modules/src/tracing.ts:27:11)
+    at QueryPromise._prepare (/home/runner/ChatGenius/node_modules/src/pg-core/query-builders/query.ts:91:17)
+    at <anonymous> (/home/runner/ChatGenius/node_modules/src/pg-core/query-builders/query.ts:154:16)
+    at Object.startActiveSpan (/home/runner/ChatGenius/node_modules/src/tracing.ts:27:11)
+    at QueryPromise.execute (/home/runner/ChatGenius/node_modules/src/pg-core/query-builders/query.ts:153:17)
+    at QueryPromise.then (/home/runner/ChatGenius/node_modules/src/query-promise.ts:31:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3
+12:11:25 AM [express] POST /api/upload 200 in 627ms :: {"url":"/uploads/1736295084940-825350198.jpg"}
+Received message: { content: 'here', channelId: 3, userId: 9 }
+Client joining channel: 3
+Error saving/broadcasting message: TypeError: Cannot read properties of undefined (reading 'referencedTable')
+    at normalizeRelation (/home/runner/ChatGenius/node_modules/src/relations.ts:571:74)
+    at PgDialect.buildRelationalQueryWithoutPK (/home/runner/ChatGenius/node_modules/src/pg-core/dialect.ts:1282:32)
+    at QueryPromise._getQuery (/home/runner/ChatGenius/node_modules/src/pg-core/query-builders/query.ts:117:23)
+    at QueryPromise._toSQL (/home/runner/ChatGenius/node_modules/src/pg-core/query-builders/query.ts:134:22)
+    at <anonymous> (/home/runner/ChatGenius/node_modules/src/pg-core/query-builders/query.ts:92:39)
+    at Object.startActiveSpan (/home/runner/ChatGenius/node_modules/src/tracing.ts:27:11)
+    at QueryPromise._prepare (/home/runner/ChatGenius/node_modules/src/pg-core/query-builders/query.ts:91:17)
+    at <anonymous> (/home/runner/ChatGenius/node_modules/src/pg-core/query-builders/query.ts:154:16)
+    at Object.startActiveSpan (/home/runner/ChatGenius/node_modules/src/tracing.ts:27:11)
+    at QueryPromise.execute (/home/runner/ChatGenius/node_modules/src/pg-core/query-builders/query.ts:153:17)
+    at QueryPromise.then (/home/runner/ChatGenius/node_modules/src/query-promise.ts:31:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Client joining channel: 3
+Client joining channel: 3
+Client joining channel: 3

@@ -78,41 +78,50 @@ export function setupWebSocket(server: Server) {
       try {
         console.log("Received message:", data);
 
-        // Insert the message
-        const [newMessage] = await db
-          .insert(messages)
-          .values({
-            content: data.content,
-            channelId: data.channelId,
-            userId: data.userId,
-            parentId: data.parentId || null,
-          })
-          .returning();
+        // Insert the message using raw SQL
+        const result = await db.execute<{ id: number }>(
+          `INSERT INTO messages (content, channel_id, user_id, parent_id)
+           VALUES ($1, $2, $3, $4)
+           RETURNING id`,
+          [data.content, data.channelId, data.userId, data.parentId || null]
+        );
 
-        if (!newMessage) {
-          throw new Error("Failed to save message");
-        }
+        const messageId = result[0].id;
 
         // If there's a file attachment, create it
         if (data.fileAttachment) {
-          await db
-            .insert(fileAttachments)
-            .values({
-              fileName: data.fileAttachment.fileName,
-              fileUrl: data.fileAttachment.fileUrl,
-              fileType: data.fileAttachment.fileType,
-              messageId: newMessage.id,
-            });
+          await db.execute(
+            `INSERT INTO file_attachments (file_name, file_url, file_type, message_id)
+             VALUES ($1, $2, $3, $4)`,
+            [
+              data.fileAttachment.fileName,
+              data.fileAttachment.fileUrl,
+              data.fileAttachment.fileType,
+              messageId
+            ]
+          );
         }
 
         // Fetch the complete message with user and file attachment data
-        const messageWithUser = await db.query.messages.findFirst({
-          where: eq(messages.id, newMessage.id),
-          with: {
-            user: true,
-            fileAttachment: true
-          }
-        });
+        const [messageWithUser] = await db.execute(
+          `SELECT 
+            m.*,
+            json_build_object(
+              'id', u.id,
+              'username', u.username,
+              'avatarUrl', u.avatar_url
+            ) as user,
+            json_build_object(
+              'fileName', fa.file_name,
+              'fileUrl', fa.file_url,
+              'fileType', fa.file_type
+            ) as file_attachment
+           FROM messages m
+           LEFT JOIN users u ON m.user_id = u.id
+           LEFT JOIN file_attachments fa ON m.id = fa.message_id
+           WHERE m.id = $1`,
+          [messageId]
+        );
 
         if (!messageWithUser) {
           throw new Error("Failed to fetch message with user data");
