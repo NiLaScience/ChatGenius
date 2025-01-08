@@ -3,11 +3,58 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { setupWebSocket } from "./websocket";
 import { db } from "@db";
-import { channels, messages, channelMembers, users, directMessages } from "@db/schema";
+import { channels, messages, channelMembers, users, directMessages, fileAttachments } from "@db/schema";
 import { eq, and, desc, isNull } from "drizzle-orm";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only images and PDFs are allowed.'));
+    }
+  },
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
+});
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
+
+  // File upload endpoint
+  app.post("/api/upload", upload.single('file'), (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    if (!req.file) {
+      return res.status(400).send("No file uploaded");
+    }
+
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.json({ url: fileUrl });
+  });
 
   // Get all users (excluding current user)
   app.get("/api/users", async (req, res) => {
@@ -26,7 +73,7 @@ export function registerRoutes(app: Express): Server {
           lastSeen: users.lastSeen,
         })
         .from(users)
-        .where(eq(users.id, req.user.id, false)); // Exclude current user
+        .where(eq(users.id, req.user.id, false));
 
       res.json(allUsers);
     } catch (error) {
@@ -153,7 +200,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const [updatedUser] = await db
         .update(users)
-        .set({ 
+        .set({
           avatarUrl: req.body.avatarUrl,
           updatedAt: new Date()
         })
@@ -176,7 +223,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const [updatedUser] = await db
         .update(users)
-        .set({ 
+        .set({
           status: req.body.status,
           lastSeen: new Date(),
           updatedAt: new Date()

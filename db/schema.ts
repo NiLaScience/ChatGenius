@@ -32,6 +32,15 @@ export const channelMembers = pgTable("channel_members", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const fileAttachments = pgTable("file_attachments", {
+  id: serial("id").primaryKey(),
+  fileName: text("file_name").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileType: text("file_type").notNull(), // 'image' or 'pdf'
+  messageId: integer("message_id").references(() => messages.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
   content: text("content").notNull(),
@@ -87,6 +96,14 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
     references: [messages.id],
   }),
   reactions: many(reactions),
+  attachments: many(fileAttachments),
+}));
+
+export const fileAttachmentsRelations = relations(fileAttachments, ({ one }) => ({
+  message: one(messages, {
+    fields: [fileAttachments.messageId],
+    references: [messages.id],
+  }),
 }));
 
 export const directMessagesRelations = relations(directMessages, ({ one }) => ({
@@ -122,6 +139,8 @@ export const insertDirectMessageSchema = createInsertSchema(directMessages);
 export const selectDirectMessageSchema = createSelectSchema(directMessages);
 export const insertReactionSchema = createInsertSchema(reactions);
 export const selectReactionSchema = createSelectSchema(reactions);
+export const insertFileAttachmentSchema = createInsertSchema(fileAttachments);
+export const selectFileAttachmentSchema = createSelectSchema(fileAttachments);
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -129,5 +148,6 @@ export type Channel = typeof channels.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type DirectMessage = typeof directMessages.$inferSelect;
 export type Reaction = typeof reactions.$inferSelect;
+export type FileAttachment = typeof fileAttachments.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type SelectUser = User;

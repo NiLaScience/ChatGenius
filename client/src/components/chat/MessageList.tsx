@@ -4,7 +4,7 @@ import { useUser } from "@/hooks/use-user";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Smile } from "lucide-react";
+import { MessageSquare, Smile, FileText } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -22,6 +22,12 @@ interface ReactionCount {
   emoji: string;
   count: number;
   users: { id: number; username: string }[];
+}
+
+interface FileAttachment {
+  fileName: string;
+  fileUrl: string;
+  fileType: 'image' | 'pdf';
 }
 
 export default function MessageList({ channelId, onThreadSelect }: MessageListProps) {
@@ -100,6 +106,38 @@ export default function MessageList({ channelId, onThreadSelect }: MessageListPr
     );
   };
 
+  // Function to render file attachments
+  const FileAttachmentView = ({ attachment }: { attachment: FileAttachment }) => {
+    if (attachment.fileType === 'image') {
+      return (
+        <a 
+          href={attachment.fileUrl} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="block max-w-sm mt-2"
+        >
+          <img 
+            src={attachment.fileUrl} 
+            alt={attachment.fileName}
+            className="rounded-lg max-h-64 object-cover"
+          />
+        </a>
+      );
+    }
+
+    return (
+      <a 
+        href={attachment.fileUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 mt-2 p-2 rounded-lg bg-background hover:bg-accent transition-colors"
+      >
+        <FileText className="h-4 w-4" />
+        <span className="text-sm truncate">{attachment.fileName}</span>
+      </a>
+    );
+  };
+
   // Function to aggregate reactions
   const aggregateReactions = (reactions: any[]): ReactionCount[] => {
     const counts = reactions.reduce((acc: Record<string, ReactionCount>, reaction) => {
@@ -169,7 +207,10 @@ export default function MessageList({ channelId, onThreadSelect }: MessageListPr
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted"
                     }`}>
-                      <p className="text-sm">{message.content}</p>
+                      {message.content && <p className="text-sm">{message.content}</p>}
+                      {message.fileAttachment && (
+                        <FileAttachmentView attachment={message.fileAttachment} />
+                      )}
                     </div>
 
                     {/* Reactions */}
