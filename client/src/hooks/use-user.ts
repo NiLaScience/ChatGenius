@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { User } from "@db/schema";
+import { useSocket } from './use-socket';
+import { useEffect } from 'react';
 
 type RequestResult = {
   message: string;
@@ -50,6 +52,7 @@ async function fetchUser(): Promise<User | null> {
 
 export function useUser() {
   const queryClient = useQueryClient();
+  const socket = useSocket();
 
   const { data: user, error, isLoading } = useQuery<User | null>({
     queryKey: ['user'],
@@ -97,12 +100,51 @@ export function useUser() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: (status: string) => 
-      handleRequest('/api/user/status', 'PUT', { status }),
+    mutationFn: async (status: string) => {
+      const result = await handleRequest('/api/user/status', 'PUT', { status });
+      // Emit socket event after successful status update
+      if (socket && user) {
+        socket.emit("status_update", {
+          userId: user.id,
+          status,
+          lastSeen: new Date()
+        });
+      }
+      return result;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user'] });
     },
   });
+
+  // Listen for status updates from other users
+  useEffect(() => {
+    if (!socket) return;
+
+    const statusHandler = (data: {
+      userId: number;
+      status: string;
+      lastSeen: Date;
+    }) => {
+      // Update the user query cache if it's the current user
+      if (user && data.userId === user.id) {
+        queryClient.setQueryData(['user'], (oldData: User | null) => {
+          if (!oldData) return null;
+          return {
+            ...oldData,
+            status: data.status,
+            lastSeen: data.lastSeen
+          };
+        });
+      }
+    };
+
+    socket.on("user_status", statusHandler);
+
+    return () => {
+      socket.off("user_status", statusHandler);
+    };
+  }, [socket, user, queryClient]);
 
   return {
     user,

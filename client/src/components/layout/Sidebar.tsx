@@ -29,6 +29,8 @@ interface SidebarProps {
   onSelectUser: (userId: number) => void;
 }
 
+type Status = "online" | "offline" | "away" | "busy";
+
 export function Sidebar({
   channels,
   selectedChannel,
@@ -36,7 +38,7 @@ export function Sidebar({
   selectedUserId,
   onSelectUser,
 }: SidebarProps) {
-  const { user, logout } = useUser();
+  const { user, logout, updateStatus } = useUser();
   const [showCreateChannel, setShowCreateChannel] = useState(false);
 
   const handleLogout = async () => {
@@ -47,22 +49,26 @@ export function Sidebar({
     }
   };
 
-  const updateStatus = async (status: string) => {
+  const handleStatusUpdate = async (status: Status) => {
     try {
-      const response = await fetch('/api/user/status', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status }),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update status');
-      }
+      await updateStatus(status);
     } catch (error) {
       console.error('Failed to update status:', error);
+    }
+  };
+
+  const getStatusColor = (status: string | null | undefined) => {
+    if (!status) return "bg-zinc-500";
+    
+    switch (status) {
+      case "online":
+        return "bg-green-500";
+      case "away":
+        return "bg-yellow-500";
+      case "busy":
+        return "bg-red-500";
+      default:
+        return "bg-zinc-500";
     }
   };
 
@@ -79,7 +85,7 @@ export function Sidebar({
             >
               <div className={cn(
                 "h-2 w-2 rounded-full",
-                user?.status === "online" ? "bg-green-500" : "bg-zinc-500"
+                getStatusColor(user?.status)
               )} />
             </Button>
           </PopoverTrigger>
@@ -88,14 +94,28 @@ export function Sidebar({
               <h4 className="font-medium leading-none mb-3">Set Status</h4>
               <button
                 className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-sm hover:bg-accent"
-                onClick={() => updateStatus('online')}
+                onClick={() => handleStatusUpdate('online')}
               >
                 <div className="w-2 h-2 rounded-full bg-green-500" />
                 Online
               </button>
               <button
                 className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-sm hover:bg-accent"
-                onClick={() => updateStatus('offline')}
+                onClick={() => handleStatusUpdate('away')}
+              >
+                <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                Away
+              </button>
+              <button
+                className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-sm hover:bg-accent"
+                onClick={() => handleStatusUpdate('busy')}
+              >
+                <div className="w-2 h-2 rounded-full bg-red-500" />
+                Do Not Disturb
+              </button>
+              <button
+                className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-sm hover:bg-accent"
+                onClick={() => handleStatusUpdate('offline')}
               >
                 <div className="w-2 h-2 rounded-full bg-zinc-500" />
                 Offline

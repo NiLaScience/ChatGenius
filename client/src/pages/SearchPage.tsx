@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { FileText, MessageSquare, Loader2 } from "lucide-react";
+import { FileText, MessageSquare, Loader2, ArrowLeft } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 
@@ -18,13 +18,26 @@ interface SearchResult {
   threadId?: number;
 }
 
+async function fetchSearchResults(query: string): Promise<SearchResult[]> {
+  const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
+    credentials: 'include'
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch search results');
+  }
+  
+  return response.json();
+}
+
 export default function SearchPage() {
   const [, setLocation] = useLocation();
   const searchParams = new URLSearchParams(window.location.search);
   const query = searchParams.get("q") || "";
 
   const { data: results, isLoading } = useQuery<SearchResult[]>({
-    queryKey: [`/api/search?q=${query}`],
+    queryKey: ['search', query],
+    queryFn: () => fetchSearchResults(query),
     enabled: !!query,
   });
 
@@ -36,33 +49,58 @@ export default function SearchPage() {
     setLocation(url);
   };
 
+  const handleBack = () => {
+    setLocation("/");
+  };
+
+  const BackButton = () => (
+    <Button 
+      variant="outline" 
+      onClick={handleBack}
+      className="absolute top-4 left-4"
+    >
+      <ArrowLeft className="h-4 w-4 mr-2" />
+      Back to Chat
+    </Button>
+  );
+
   if (!query) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        Enter a search term to begin
+      <div className="relative h-full">
+        <BackButton />
+        <div className="flex items-center justify-center h-full text-muted-foreground">
+          Enter a search term to begin
+        </div>
       </div>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="relative h-full">
+        <BackButton />
+        <div className="flex items-center justify-center h-full">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
       </div>
     );
   }
 
   if (!results?.length) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        No results found for "{query}"
+      <div className="relative h-full">
+        <BackButton />
+        <div className="flex items-center justify-center h-full text-muted-foreground">
+          No results found for "{query}"
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col p-6">
-      <h1 className="text-2xl font-semibold mb-4">
+    <div className="relative h-full flex flex-col p-6">
+      <BackButton />
+      <h1 className="text-2xl font-semibold mb-4 mt-12">
         Search results for "{query}"
       </h1>
       <ScrollArea className="flex-1">

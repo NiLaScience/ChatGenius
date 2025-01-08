@@ -1,7 +1,7 @@
 import { Server } from "http";
 import { Server as SocketServer } from "socket.io";
 import { db } from "@db";
-import { messages, users, reactions, directMessages, fileAttachments } from "@db/schema";
+import { messages, users, reactions, directMessages, fileAttachments, type Message } from "@db/schema";
 import { eq, and } from "drizzle-orm";
 
 export function setupWebSocket(server: Server) {
@@ -74,7 +74,7 @@ export function setupWebSocket(server: Server) {
         console.log("Received message:", data);
 
         // Insert message first
-        const [newMessage] = await db
+        const result = await db
           .insert(messages)
           .values({
             content: data.content,
@@ -83,6 +83,8 @@ export function setupWebSocket(server: Server) {
             parentId: data.parentId || null,
           })
           .returning();
+        
+        const newMessage = result[0] as Message;
 
         if (!newMessage) {
           throw new Error("Failed to save message");
@@ -101,28 +103,13 @@ export function setupWebSocket(server: Server) {
         }
 
         // Fetch complete message with user and file attachment
-        const [messageWithData] = await db.execute(`
-          SELECT 
-            m.*,
-            jsonb_build_object(
-              'id', u.id,
-              'username', u.username,
-              'avatarUrl', u.avatar_url
-            ) as user,
-            CASE 
-              WHEN fa.id IS NOT NULL THEN
-                jsonb_build_object(
-                  'fileName', fa.file_name,
-                  'fileUrl', fa.file_url,
-                  'fileType', fa.file_type
-                )
-              ELSE NULL
-            END as file_attachment
-          FROM messages m
-          LEFT JOIN users u ON m.user_id = u.id
-          LEFT JOIN file_attachments fa ON m.id = fa.message_id
-          WHERE m.id = $1
-        `, [newMessage.id]);
+        const messageWithData = await db.query.messages.findFirst({
+          where: eq(messages.id, newMessage.id),
+          with: {
+            user: true,
+            fileAttachment: true
+          }
+        });
 
         if (!messageWithData) {
           throw new Error("Failed to fetch message data");
@@ -131,8 +118,9 @@ export function setupWebSocket(server: Server) {
         // Broadcast message
         if (data.parentId) {
           io.to(`thread:${data.parentId}`).emit("thread_message", messageWithData);
+        } else {
+          io.to(`channel:${data.channelId}`).emit("message", messageWithData);
         }
-        io.to(`channel:${data.channelId}`).emit("message", messageWithData);
 
       } catch (error) {
         console.error("Error handling message:", error);
@@ -288,6 +276,30 @@ export function setupWebSocket(server: Server) {
         } catch (error) {
           console.error("Error updating user status:", error);
         }
+      }
+    });
+
+    socket.on("status_update", async (data: {
+      userId: number;
+      status: string;
+      lastSeen: Date;
+    }) => {
+      try {
+        await db
+          .update(users)
+          .set({ 
+            status: data.status,
+            lastSeen: new Date()
+          })
+          .where(eq(users.id, data.userId));
+
+        socket.broadcast.emit("user_status", {
+          userId: data.userId,
+          status: data.status,
+          lastSeen: new Date()
+        });
+      } catch (error) {
+        console.error("Error updating user status:", error);
       }
     });
   });
