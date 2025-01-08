@@ -489,8 +489,9 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const searchResults = await db.execute(`
-        WITH search_results AS (
+      // Use array-style parameter binding for PostgreSQL
+      const searchResults = await db.execute(
+        `WITH search_results AS (
           -- Search in messages
           SELECT 
             m.id,
@@ -507,7 +508,7 @@ export function registerRoutes(app: Express): Server {
           FROM messages m
           JOIN users u ON m.user_id = u.id
           JOIN channels c ON m.channel_id = c.id
-          WHERE m.content ILIKE $1
+          WHERE m.content ILIKE '%' || $1 || '%'
 
           UNION ALL
 
@@ -528,12 +529,13 @@ export function registerRoutes(app: Express): Server {
           JOIN messages m2 ON fa.message_id = m2.id
           JOIN users u2 ON m2.user_id = u2.id
           JOIN channels c2 ON m2.channel_id = c2.id
-          WHERE fa.file_name ILIKE $1
+          WHERE fa.file_name ILIKE '%' || $1 || '%'
         )
         SELECT * FROM search_results
         ORDER BY "createdAt" DESC
-        LIMIT 50
-      `, [`%${query}%`]);
+        LIMIT 50`,
+        [query]
+      );
 
       res.json(searchResults);
     } catch (error) {
